@@ -1,0 +1,261 @@
+    Checking caxur v0.1.0 (/Users/dmn/jeprox/tools/caxur)
+error: error returned from database: password authentication failed for user "postgres"
+  --> src/infrastructure/repositories/users.rs:20:20
+   |
+20 |           let user = sqlx::query_as!(
+   |  ____________________^
+21 | |             User,
+22 | |             r#"
+23 | |             INSERT INTO users (username, email, password_hash)
+...  |
+29 | |             new_user.password_hash
+30 | |         )
+   | |_________^
+   |
+   = note: this error originates in the macro `$crate::sqlx_macros::expand_query` which comes from the expansion of the macro `sqlx::query_as` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: error returned from database: password authentication failed for user "postgres"
+  --> src/infrastructure/repositories/users.rs:38:20
+   |
+38 |           let user = sqlx::query_as!(
+   |  ____________________^
+39 | |             User,
+40 | |             r#"
+41 | |             SELECT id, username, email, password_hash, created_at, updated_at
+...  |
+45 | |             email
+46 | |         )
+   | |_________^
+   |
+   = note: this error originates in the macro `$crate::sqlx_macros::expand_query` which comes from the expansion of the macro `sqlx::query_as` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0433]: failed to resolve: use of unresolved module or unlinked crate `serde`
+ --> src/shared/validation.rs:6:5
+  |
+6 | use serde::de::DeserializeOwned;
+  |     ^^^^^ use of unresolved module or unlinked crate `serde`
+  |
+  = help: if you wanted to use a crate named `serde`, use `cargo add serde` to add it to your `Cargo.toml`
+
+error[E0432]: unresolved import `serde`
+ --> src/application/users/create.rs:2:5
+  |
+2 | use serde::Deserialize;
+  |     ^^^^^ use of unresolved module or unlinked crate `serde`
+  |
+  = help: if you wanted to use a crate named `serde`, use `cargo add serde` to add it to your `Cargo.toml`
+
+error[E0432]: unresolved import `async_trait`
+ --> src/domain/users.rs:1:5
+  |
+1 | use async_trait::async_trait;
+  |     ^^^^^^^^^^^ use of unresolved module or unlinked crate `async_trait`
+  |
+  = help: if you wanted to use a crate named `async_trait`, use `cargo add async_trait` to add it to your `Cargo.toml`
+
+error[E0432]: unresolved import `serde`
+ --> src/domain/users.rs:2:5
+  |
+2 | use serde::{Deserialize, Serialize};
+  |     ^^^^^ use of unresolved module or unlinked crate `serde`
+  |
+  = help: if you wanted to use a crate named `serde`, use `cargo add serde` to add it to your `Cargo.toml`
+
+error[E0432]: unresolved import `time`
+ --> src/domain/users.rs:3:5
+  |
+3 | use time::OffsetDateTime;
+  |     ^^^^ help: a similar path exists: `tokio::time`
+
+error[E0432]: unresolved import `uuid`
+ --> src/domain/users.rs:4:5
+  |
+4 | use uuid::Uuid;
+  |     ^^^^ use of unresolved module or unlinked crate `uuid`
+  |
+  = help: if you wanted to use a crate named `uuid`, use `cargo add uuid` to add it to your `Cargo.toml`
+
+error[E0432]: unresolved import `async_trait`
+ --> src/infrastructure/repositories/users.rs:3:5
+  |
+3 | use async_trait::async_trait;
+  |     ^^^^^^^^^^^ use of unresolved module or unlinked crate `async_trait`
+  |
+  = help: if you wanted to use a crate named `async_trait`, use `cargo add async_trait` to add it to your `Cargo.toml`
+
+error[E0432]: unresolved import `serde`
+ --> src/shared/response.rs:1:5
+  |
+1 | use serde::Serialize;
+  |     ^^^^^ use of unresolved module or unlinked crate `serde`
+  |
+  = help: if you wanted to use a crate named `serde`, use `cargo add serde` to add it to your `Cargo.toml`
+
+error[E0433]: failed to resolve: could not find `async_trait` in `axum`
+  --> src/shared/validation.rs:12:9
+   |
+12 | #[axum::async_trait]
+   |         ^^^^^^^^^^^ could not find `async_trait` in `axum`
+
+error: cannot find attribute `serde` in this scope
+  --> src/domain/users.rs:11:7
+   |
+11 |     #[serde(skip)]
+   |       ^^^^^
+   |
+   = note: `serde` is an attribute that can be used by the derive macros `Deserialize` and `Serialize`, you might be missing a `derive` attribute
+
+error: cannot find attribute `serde` in this scope
+  --> src/domain/users.rs:13:7
+   |
+13 |     #[serde(with = "time::serde::iso8601")]
+   |       ^^^^^
+   |
+   = note: `serde` is an attribute that can be used by the derive macros `Deserialize` and `Serialize`, you might be missing a `derive` attribute
+
+error: cannot find attribute `serde` in this scope
+  --> src/domain/users.rs:15:7
+   |
+15 |     #[serde(with = "time::serde::iso8601")]
+   |       ^^^^^
+   |
+   = note: `serde` is an attribute that can be used by the derive macros `Deserialize` and `Serialize`, you might be missing a `derive` attribute
+
+error: cannot find attribute `serde` in this scope
+ --> src/shared/response.rs:6:7
+  |
+6 |     #[serde(skip_serializing_if = "Option::is_none")]
+  |       ^^^^^
+  |
+  = note: `serde` is an attribute that can be used by the derive macros `Deserialize` and `Serialize`, you might be missing a `derive` attribute
+
+error[E0433]: failed to resolve: could not find `EnvFilter` in `tracing_subscriber`
+   --> src/main.rs:16:35
+    |
+ 16 |         .with(tracing_subscriber::EnvFilter::new(
+    |                                   ^^^^^^^^^ could not find `EnvFilter` in `tracing_subscriber`
+    |
+note: found an item that was configured out
+   --> /Users/dmn/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/tracing-subscriber-0.3.22/src/lib.rs:239:21
+    |
+238 |     #![all(feature = "env-filter", feature = "std")]
+    |            ---------------------- the item is gated behind the `env-filter` feature
+239 |     pub use filter::EnvFilter;
+    |                     ^^^^^^^^^
+
+warning: unused import: `sqlx::Row`
+ --> src/infrastructure/repositories/users.rs:4:5
+  |
+4 | use sqlx::Row;
+  |     ^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+error[E0038]: the trait `UserRepository` is not dyn compatible
+  --> src/application/users/create.rs:17:15
+   |
+17 |     repo: Arc<dyn UserRepository>,
+   |               ^^^^^^^^^^^^^^^^^^ `UserRepository` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> src/domain/users.rs:28:14
+   |
+27 | pub trait UserRepository: Send + Sync {
+   |           -------------- this trait is not dyn compatible...
+28 |     async fn create(&self, new_user: NewUser) -> Result<User, anyhow::Error>;
+   |              ^^^^^^ ...because method `create` is `async`
+29 |     async fn find_by_email(&self, email: &str) -> Result<Option<User>, anyhow::Error>;
+   |              ^^^^^^^^^^^^^ ...because method `find_by_email` is `async`
+   = help: consider moving `create` to another trait
+   = help: consider moving `find_by_email` to another trait
+   = help: only type `infrastructure::repositories::users::PostgresUserRepository` implements `UserRepository`; consider using it directly instead.
+
+error[E0038]: the trait `UserRepository` is not dyn compatible
+  --> src/application/users/create.rs:33:9
+   |
+33 |         self.repo.create(new_user).await
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^ `UserRepository` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> src/domain/users.rs:28:14
+   |
+27 | pub trait UserRepository: Send + Sync {
+   |           -------------- this trait is not dyn compatible...
+28 |     async fn create(&self, new_user: NewUser) -> Result<User, anyhow::Error>;
+   |              ^^^^^^ ...because method `create` is `async`
+29 |     async fn find_by_email(&self, email: &str) -> Result<Option<User>, anyhow::Error>;
+   |              ^^^^^^^^^^^^^ ...because method `find_by_email` is `async`
+   = help: consider moving `create` to another trait
+   = help: consider moving `find_by_email` to another trait
+   = help: only type `infrastructure::repositories::users::PostgresUserRepository` implements `UserRepository`; consider using it directly instead.
+
+error[E0038]: the trait `UserRepository` is not dyn compatible
+  --> src/presentation/handlers/users.rs:15:43
+   |
+15 |     let use_case = CreateUserUseCase::new(repo);
+   |                                           ^^^^ `UserRepository` is not dyn compatible
+   |
+note: for a trait to be dyn compatible it needs to allow building a vtable
+      for more information, visit <https://doc.rust-lang.org/reference/items/traits.html#dyn-compatibility>
+  --> src/domain/users.rs:28:14
+   |
+27 | pub trait UserRepository: Send + Sync {
+   |           -------------- this trait is not dyn compatible...
+28 |     async fn create(&self, new_user: NewUser) -> Result<User, anyhow::Error>;
+   |              ^^^^^^ ...because method `create` is `async`
+29 |     async fn find_by_email(&self, email: &str) -> Result<Option<User>, anyhow::Error>;
+   |              ^^^^^^^^^^^^^ ...because method `find_by_email` is `async`
+   = help: consider moving `create` to another trait
+   = help: consider moving `find_by_email` to another trait
+   = help: only type `infrastructure::repositories::users::PostgresUserRepository` implements `UserRepository`; consider using it directly instead.
+
+error[E0277]: the trait bound `(axum::http::StatusCode, axum::Json<ApiResponse<User>>): IntoResponse` is not satisfied
+  --> src/presentation/handlers/users.rs:13:42
+   |
+13 |   ) -> Result<impl IntoResponse, AppError> {
+   |  __________________________________________^
+14 | |     let repo = Arc::new(PostgresUserRepository::new(pool));
+15 | |     let use_case = CreateUserUseCase::new(repo);
+...  |
+19 | |     Ok((StatusCode::CREATED, Json(ApiResponse::new(user))))
+20 | | }
+   | |_^ the trait `IntoResponse` is not implemented for `(axum::http::StatusCode, axum::Json<ApiResponse<User>>)`
+   |
+   = help: the following other types implement trait `IntoResponse`:
+             ()
+             (R,)
+             (Response<()>, R)
+             (Response<()>, T1, R)
+             (Response<()>, T1, T2, R)
+             (Response<()>, T1, T2, T3, R)
+             (Response<()>, T1, T2, T3, T4, R)
+             (Response<()>, T1, T2, T3, T4, T5, R)
+           and 61 others
+   = note: the full name for the type has been written to '/Users/dmn/jeprox/tools/caxur/target/debug/deps/caxur-bbf206fe54d07244.long-type-12640531037150795124.txt'
+   = note: consider using `--verbose` to print the full type name to the console
+
+error[E0277]: the trait bound `(axum::http::StatusCode, axum::Json<ApiResponse<User>>): IntoResponse` is not satisfied
+  --> src/presentation/handlers/users.rs:13:13
+   |
+13 | ) -> Result<impl IntoResponse, AppError> {
+   |             ^^^^^^^^^^^^^^^^^ the trait `IntoResponse` is not implemented for `(axum::http::StatusCode, axum::Json<ApiResponse<User>>)`
+   |
+   = help: the following other types implement trait `IntoResponse`:
+             ()
+             (R,)
+             (Response<()>, R)
+             (Response<()>, T1, R)
+             (Response<()>, T1, T2, R)
+             (Response<()>, T1, T2, T3, R)
+             (Response<()>, T1, T2, T3, T4, R)
+             (Response<()>, T1, T2, T3, T4, T5, R)
+           and 61 others
+   = note: the full name for the type has been written to '/Users/dmn/jeprox/tools/caxur/target/debug/deps/caxur-bbf206fe54d07244.long-type-12640531037150795124.txt'
+   = note: consider using `--verbose` to print the full type name to the console
+
+Some errors have detailed explanations: E0038, E0277, E0432, E0433.
+For more information about an error, try `rustc --explain E0038`.
+warning: `caxur` (bin "caxur") generated 1 warning
+error: could not compile `caxur` (bin "caxur") due to 21 previous errors; 1 warning emitted

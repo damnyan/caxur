@@ -1,0 +1,64 @@
+   Compiling time-macros v0.2.24
+   Compiling getrandom v0.3.4
+    Checking regex-automata v0.4.13
+    Checking deranged v0.5.5
+   Compiling async-trait v0.1.89
+   Compiling time v0.3.44
+    Checking regex v1.12.2
+    Checking matchers v0.2.0
+    Checking tracing-subscriber v0.3.22
+    Checking validator v0.20.0
+    Checking uuid v1.18.1
+    Checking sqlx-core v0.8.6
+    Checking sqlx-postgres v0.8.6
+   Compiling sqlx-macros-core v0.8.6
+   Compiling sqlx-macros v0.8.6
+    Checking sqlx v0.8.6
+    Checking caxur v0.1.0 (/Users/dmn/jeprox/tools/caxur)
+error: error returned from database: password authentication failed for user "postgres"
+  --> src/infrastructure/repositories/users.rs:20:20
+   |
+20 |           let user = sqlx::query_as!(
+   |  ____________________^
+21 | |             User,
+22 | |             r#"
+23 | |             INSERT INTO users (username, email, password_hash)
+...  |
+29 | |             new_user.password_hash
+30 | |         )
+   | |_________^
+   |
+   = note: this error originates in the macro `$crate::sqlx_macros::expand_query` which comes from the expansion of the macro `sqlx::query_as` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: error returned from database: password authentication failed for user "postgres"
+  --> src/infrastructure/repositories/users.rs:38:20
+   |
+38 |           let user = sqlx::query_as!(
+   |  ____________________^
+39 | |             User,
+40 | |             r#"
+41 | |             SELECT id, username, email, password_hash, created_at, updated_at
+...  |
+45 | |             email
+46 | |         )
+   | |_________^
+   |
+   = note: this error originates in the macro `$crate::sqlx_macros::expand_query` which comes from the expansion of the macro `sqlx::query_as` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0433]: failed to resolve: could not find `async_trait` in `axum`
+  --> src/shared/validation.rs:12:9
+   |
+12 | #[axum::async_trait]
+   |         ^^^^^^^^^^^ could not find `async_trait` in `axum`
+
+warning: unused import: `sqlx::Row`
+ --> src/infrastructure/repositories/users.rs:4:5
+  |
+4 | use sqlx::Row;
+  |     ^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+For more information about this error, try `rustc --explain E0433`.
+warning: `caxur` (bin "caxur") generated 1 warning
+error: could not compile `caxur` (bin "caxur") due to 3 previous errors; 1 warning emitted
