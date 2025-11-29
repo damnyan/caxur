@@ -5,6 +5,7 @@
 This project is built on the following core principles:
 
 - **Clean Architecture**: Separation of concerns is paramount. The dependency rule is strictly enforced: `Domain ← Application ← Infrastructure ← Presentation`.
+- **Idiomatic Rust**: Follow Rust best practices and conventions throughout the codebase. Use module names for context (`routes::auth::routes()` instead of `routes::auth::auth_routes()`), prefer `Result` types, leverage the type system, and write expressive, safe code.
 - **KISS (Keep It Simple, Stupid)**: The structure is modular but avoids unnecessary abstraction overhead. We use simple dependency injection via constructors.
 - **DRY (Don't Repeat Yourself)**: Common logic like validation, error mapping, and response formatting is centralized in the `shared` module.
 - **TDD (Test Driven Development)**: The architecture supports easy unit testing by decoupling business logic from the database and HTTP layer.
@@ -40,11 +41,17 @@ This is a **strict Clean Architecture** Rust/Axum REST API following the depende
 
 **Presentation (`src/presentation/`)**: HTTP layer
 
-- Handlers are async functions that extract `State<DbPool>` and `ValidatedJson<RequestDTO>`
-- Instantiate concrete repository inside handler: `Arc::new(PostgresRepository::new(pool))`
-- Pass repository to use case constructor, call `execute()`
-- Return `(StatusCode::CREATED, Json(ApiResponse::new(result)))`
-- Register routes in `router.rs` using `axum::routing::post(handler_fn)`
+- **Handlers** (`handlers/`): Async functions that extract `State<DbPool>` and `ValidatedJson<RequestDTO>`
+  - Instantiate concrete repository inside handler: `Arc::new(PostgresRepository::new(pool))`
+  - Pass repository to use case constructor, call `execute()`
+  - Return `(StatusCode::CREATED, Json(ApiResponse::new(result)))`
+- **Routes** (`routes/`): Modular route definitions organized by feature
+  - Each module exports a `routes()` function returning `Router<DbPool>`
+  - Use idiomatic naming: `routes::auth::routes()`, `routes::users::routes()`
+  - Routes use relative paths merged into main router with `.nest()`
+- **Router** (`router.rs`): Main application router composing all feature routes
+  - Uses `.nest("/api/v1/feature", routes::feature::routes())` for versioning
+  - Applies global middleware with `.layer()`
 
 **Shared (`src/shared/`)**: Cross-cutting utilities
 
@@ -111,8 +118,11 @@ cargo test
 1. **Domain**: Create entity struct + repository trait in `src/domain/feature.rs`
 2. **Infrastructure**: Implement repository in `src/infrastructure/repositories/feature.rs`
 3. **Application**: Create request DTO + use case in `src/application/feature/action.rs`
-4. **Presentation**: Create handler in `src/presentation/handlers/feature.rs`
-5. **Router**: Register route in `src/presentation/router.rs`
+4. **Presentation - Handlers**: Create handlers in `src/presentation/handlers/feature.rs`
+5. **Presentation - Routes**: Create route module in `src/presentation/routes/feature.rs`
+   - Export a `routes()` function that returns `Router<DbPool>`
+   - Use relative paths (e.g., `"/", "/{id}"`)
+6. **Router**: Register in `src/presentation/router.rs` using `.nest("/api/v1/feature", routes::feature::routes())`
 
 ### Testing Strategy
 

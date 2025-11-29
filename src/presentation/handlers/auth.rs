@@ -19,7 +19,7 @@ use std::sync::Arc;
 /// Login handler
 #[utoipa::path(
     post,
-    path = "/auth/login",
+    path = "/api/v1/auth/login",
     request_body = LoginRequest,
     responses(
         (status = 200, description = "Login successful", body = ApiResponse<LoginResponse>),
@@ -77,7 +77,7 @@ pub async fn login(
 /// Refresh token handler
 #[utoipa::path(
     post,
-    path = "/auth/refresh",
+    path = "/api/v1/auth/refresh",
     request_body = RefreshTokenRequest,
     responses(
         (status = 200, description = "Token refreshed successfully", body = ApiResponse<RefreshTokenResponse>),

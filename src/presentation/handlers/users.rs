@@ -23,7 +23,7 @@ use uuid::Uuid;
 /// Create a new user
 #[utoipa::path(
     post,
-    path = "/users",
+    path = "/api/v1/users",
     request_body = CreateUserRequest,
     responses(
         (status = 201, description = "User created successfully", body = ApiResponse<User>),
@@ -46,7 +46,7 @@ pub async fn create_user(
 /// Get a user by ID
 #[utoipa::path(
     get,
-    path = "/users/{id}",
+    path = "/api/v1/users/{id}",
     params(
         ("id" = Uuid, Path, description = "User ID")
     ),
@@ -75,7 +75,7 @@ pub async fn get_user(
 /// List all users with pagination
 #[utoipa::path(
     get,
-    path = "/users",
+    path = "/api/v1/users",
     params(ListUsersRequest),
     responses(
         (status = 200, description = "List of users", body = ApiResponse<Vec<User>>)
@@ -98,7 +98,7 @@ pub async fn list_users(
 /// Update a user
 #[utoipa::path(
     put,
-    path = "/users/{id}",
+    path = "/api/v1/users/{id}",
     params(
         ("id" = Uuid, Path, description = "User ID")
     ),
@@ -135,7 +135,7 @@ pub async fn update_user(
 /// Delete a user
 #[utoipa::path(
     delete,
-    path = "/users/{id}",
+    path = "/api/v1/users/{id}",
     params(
         ("id" = Uuid, Path, description = "User ID")
     ),
