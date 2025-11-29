@@ -1,15 +1,20 @@
 use crate::domain::users::{NewUser, User, UserRepository};
+use crate::shared::error::AppError;
 use serde::Deserialize;
 use std::sync::Arc;
+use utoipa::ToSchema;
 use validator::Validate;
 
-#[derive(Deserialize, Validate)]
+#[derive(Deserialize, Validate, ToSchema)]
 pub struct CreateUserRequest {
     #[validate(length(min = 3, message = "Username must be at least 3 characters"))]
+    #[schema(example = "johndoe", min_length = 3)]
     pub username: String,
     #[validate(email(message = "Invalid email format"))]
+    #[schema(example = "john@example.com")]
     pub email: String,
     #[validate(length(min = 6, message = "Password must be at least 6 characters"))]
+    #[schema(example = "password123", min_length = 6)]
     pub password: String,
 }
 
@@ -22,7 +27,14 @@ impl CreateUserUseCase {
         Self { repo }
     }
 
-    pub async fn execute(&self, req: CreateUserRequest) -> Result<User, anyhow::Error> {
+    pub async fn execute(&self, req: CreateUserRequest) -> Result<User, AppError> {
+        // Check if email already exists
+        if let Some(_) = self.repo.find_by_email(&req.email).await? {
+            return Err(AppError::ValidationError(
+                "Email already exists".to_string(),
+            ));
+        }
+
         // In a real app, you'd hash the password here
         let new_user = NewUser {
             username: req.username,
@@ -30,7 +42,7 @@ impl CreateUserUseCase {
             password_hash: req.password, // Placeholder for hashing
         };
 
-        self.repo.create(new_user).await
+        Ok(self.repo.create(new_user).await?)
     }
 }
 

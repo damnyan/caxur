@@ -1,12 +1,15 @@
 use crate::domain::users::{User, UserRepository};
 use serde::Deserialize;
 use std::sync::Arc;
+use utoipa::{IntoParams, ToSchema};
 
-#[derive(Deserialize)]
+#[derive(Deserialize, IntoParams, ToSchema)]
 pub struct ListUsersRequest {
     #[serde(default = "default_limit")]
+    #[param(example = 20, maximum = 100)]
     pub limit: i64,
     #[serde(default)]
+    #[param(example = 0)]
     pub offset: i64,
 }
 
@@ -27,7 +30,7 @@ impl ListUsersUseCase {
         // Enforce reasonable limits
         let limit = req.limit.min(100).max(1);
         let offset = req.offset.max(0);
-        
+
         self.repo.find_all(limit, offset).await
     }
 }
@@ -41,7 +44,7 @@ mod tests {
     #[tokio::test]
     async fn test_list_users() {
         let repo = Arc::new(MockUserRepository::default());
-        
+
         // Create multiple users
         for i in 0..3 {
             let new_user = NewUser {
@@ -65,7 +68,7 @@ mod tests {
     #[tokio::test]
     async fn test_list_users_with_limit() {
         let repo = Arc::new(MockUserRepository::default());
-        
+
         for i in 0..5 {
             let new_user = NewUser {
                 username: format!("user{}", i),

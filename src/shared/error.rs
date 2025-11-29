@@ -3,8 +3,20 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
 };
-use serde_json::json;
+use serde::Serialize;
 use thiserror::Error;
+use utoipa::ToSchema;
+
+#[derive(Serialize, ToSchema)]
+pub struct ErrorResponse {
+    pub errors: Vec<ErrorDetail>,
+}
+
+#[derive(Serialize, ToSchema)]
+pub struct ErrorDetail {
+    pub status: u16,
+    pub detail: String,
+}
 
 #[derive(Error, Debug)]
 pub enum AppError {
@@ -14,6 +26,8 @@ pub enum AppError {
     DatabaseError(#[from] sqlx::Error),
     #[error("Not found")]
     NotFound,
+    #[error("Conflict: {0}")]
+    Conflict(String),
     #[error("Internal server error: {0}")]
     InternalServerError(#[from] anyhow::Error),
 }
@@ -23,6 +37,28 @@ impl IntoResponse for AppError {
         let (status, message) = match self {
             AppError::ValidationError(msg) => (StatusCode::UNPROCESSABLE_ENTITY, msg),
             AppError::DatabaseError(e) => {
+                // Check for unique constraint violations
+                if let Some(db_err) = e.as_database_error() {
+                    if db_err.is_unique_violation() {
+                        let msg = if db_err.message().contains("username") {
+                            "Username already exists".to_string()
+                        } else if db_err.message().contains("email") {
+                            "Email already exists".to_string()
+                        } else {
+                            "Resource already exists".to_string()
+                        };
+                        return (
+                            StatusCode::UNPROCESSABLE_ENTITY,
+                            Json(ErrorResponse {
+                                errors: vec![ErrorDetail {
+                                    status: 422,
+                                    detail: msg,
+                                }],
+                            }),
+                        )
+                            .into_response();
+                    }
+                }
                 tracing::error!("Database error: {:?}", e);
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
@@ -30,6 +66,7 @@ impl IntoResponse for AppError {
                 )
             }
             AppError::NotFound => (StatusCode::NOT_FOUND, "Resource not found".to_string()),
+            AppError::Conflict(msg) => (StatusCode::CONFLICT, msg),
             AppError::InternalServerError(e) => {
                 tracing::error!("Internal server error: {:?}", e);
                 (
@@ -39,14 +76,12 @@ impl IntoResponse for AppError {
             }
         };
 
-        let body = json!({
-            "errors": [
-                {
-                    "status": status.as_u16(),
-                    "detail": message
-                }
-            ]
-        });
+        let body = ErrorResponse {
+            errors: vec![ErrorDetail {
+                status: status.as_u16(),
+                detail: message,
+            }],
+        };
 
         (status, Json(body)).into_response()
     }

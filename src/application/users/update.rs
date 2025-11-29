@@ -1,16 +1,20 @@
 use crate::domain::users::{UpdateUser, User, UserRepository};
 use serde::Deserialize;
 use std::sync::Arc;
+use utoipa::ToSchema;
 use uuid::Uuid;
 use validator::Validate;
 
-#[derive(Deserialize, Validate)]
+#[derive(Deserialize, Validate, ToSchema)]
 pub struct UpdateUserRequest {
     #[validate(length(min = 3, message = "Username must be at least 3 characters"))]
+    #[schema(example = "johndoe_updated", min_length = 3)]
     pub username: Option<String>,
     #[validate(email(message = "Invalid email format"))]
+    #[schema(example = "newemail@example.com")]
     pub email: Option<String>,
     #[validate(length(min = 6, message = "Password must be at least 6 characters"))]
+    #[schema(example = "newpassword123", min_length = 6)]
     pub password: Option<String>,
 }
 
@@ -49,7 +53,7 @@ mod tests {
     #[tokio::test]
     async fn test_update_user() {
         let repo = Arc::new(MockUserRepository::default());
-        
+
         let new_user = NewUser {
             username: "oldname".to_string(),
             email: "old@example.com".to_string(),
@@ -74,7 +78,7 @@ mod tests {
     async fn test_update_nonexistent_user() {
         let repo = Arc::new(MockUserRepository::default());
         let use_case = UpdateUserUseCase::new(repo);
-        
+
         let req = UpdateUserRequest {
             username: Some("newname".to_string()),
             email: None,

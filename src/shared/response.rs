@@ -1,6 +1,7 @@
 use serde::Serialize;
+use utoipa::ToSchema;
 
-#[derive(Serialize)]
+#[derive(Serialize, ToSchema)]
 pub struct ApiResponse<T> {
     pub data: T,
     #[serde(skip_serializing_if = "Option::is_none")]

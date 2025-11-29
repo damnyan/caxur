@@ -1,12 +1,16 @@
 use crate::infrastructure::db::DbPool;
+use crate::presentation::openapi::ApiDoc;
 use axum::{
-    routing::{get, post},
     Router,
+    routing::{get, post},
 };
 use tower_http::trace::TraceLayer;
+use utoipa::OpenApi;
+use utoipa_swagger_ui::SwaggerUi;
 
 pub fn app(pool: DbPool) -> Router {
     Router::new()
+        .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
         .route("/health", get(|| async { "ok" }))
         .route(
             "/users",
@@ -14,7 +18,7 @@ pub fn app(pool: DbPool) -> Router {
                 .get(crate::presentation::handlers::users::list_users),
         )
         .route(
-            "/users/:id",
+            "/users/{id}",
             get(crate::presentation::handlers::users::get_user)
                 .put(crate::presentation::handlers::users::update_user)
                 .delete(crate::presentation::handlers::users::delete_user),

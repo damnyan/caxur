@@ -2,18 +2,22 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use time::OffsetDateTime;
+use utoipa::ToSchema;
 use uuid::Uuid;
 
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow)]
+#[derive(Debug, Clone, Serialize, Deserialize, FromRow, ToSchema)]
 pub struct User {
     pub id: Uuid,
     pub username: String,
     pub email: String,
     #[serde(skip)]
+    #[schema(ignore)]
     pub password_hash: String,
     #[serde(with = "time::serde::iso8601")]
+    #[schema(value_type = String, example = "2025-11-29T10:00:00Z")]
     pub created_at: OffsetDateTime,
     #[serde(with = "time::serde::iso8601")]
+    #[schema(value_type = String, example = "2025-11-29T10:00:00Z")]
     pub updated_at: OffsetDateTime,
 }
 
