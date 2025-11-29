@@ -13,6 +13,14 @@ pub fn app(pool: DbPool) -> Router {
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
         .route("/health", get(|| async { "ok" }))
         .route(
+            "/auth/login",
+            post(crate::presentation::handlers::auth::login),
+        )
+        .route(
+            "/auth/refresh",
+            post(crate::presentation::handlers::auth::refresh_token),
+        )
+        .route(
             "/users",
             post(crate::presentation::handlers::users::create_user)
                 .get(crate::presentation::handlers::users::list_users),

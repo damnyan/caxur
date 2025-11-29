@@ -1,3 +1,7 @@
+#[allow(unused_imports)]
+use crate::application::auth::login::{LoginRequest, LoginResponse};
+#[allow(unused_imports)]
+use crate::application::auth::refresh::{RefreshTokenRequest, RefreshTokenResponse};
 use crate::application::users::create::CreateUserRequest;
 use crate::application::users::list::ListUsersRequest;
 use crate::application::users::update::UpdateUserRequest;
@@ -18,6 +22,8 @@ use utoipa::OpenApi;
         )
     ),
     paths(
+        crate::presentation::handlers::auth::login,
+        crate::presentation::handlers::auth::refresh_token,
         crate::presentation::handlers::users::create_user,
         crate::presentation::handlers::users::get_user,
         crate::presentation::handlers::users::list_users,
@@ -30,13 +36,20 @@ use utoipa::OpenApi;
             CreateUserRequest,
             UpdateUserRequest,
             ListUsersRequest,
+            LoginRequest,
+            LoginResponse,
+            RefreshTokenRequest,
+            RefreshTokenResponse,
             ApiResponse<User>,
             ApiResponse<Vec<User>>,
+            ApiResponse<LoginResponse>,
+            ApiResponse<RefreshTokenResponse>,
             ErrorResponse,
             ErrorDetail,
         )
     ),
     tags(
+        (name = "auth", description = "Authentication endpoints"),
         (name = "users", description = "User management endpoints")
     )
 )]

@@ -6,6 +6,7 @@ use crate::application::users::update::{UpdateUserRequest, UpdateUserUseCase};
 use crate::domain::users::User;
 use crate::infrastructure::db::DbPool;
 use crate::infrastructure::repositories::users::PostgresUserRepository;
+use crate::presentation::handlers::auth::AuthUser;
 use crate::shared::error::{AppError, ErrorResponse};
 use crate::shared::response::ApiResponse;
 use crate::shared::validation::ValidatedJson;
@@ -58,6 +59,7 @@ pub async fn create_user(
 pub async fn get_user(
     State(pool): State<DbPool>,
     Path(id): Path<Uuid>,
+    _auth: AuthUser,
 ) -> Result<impl IntoResponse, AppError> {
     let repo = Arc::new(PostgresUserRepository::new(pool));
     let use_case = GetUserUseCase::new(repo);
@@ -83,6 +85,7 @@ pub async fn get_user(
 pub async fn list_users(
     State(pool): State<DbPool>,
     Query(req): Query<ListUsersRequest>,
+    _auth: AuthUser,
 ) -> Result<impl IntoResponse, AppError> {
     let repo = Arc::new(PostgresUserRepository::new(pool));
     let use_case = ListUsersUseCase::new(repo);
@@ -110,8 +113,17 @@ pub async fn list_users(
 pub async fn update_user(
     State(pool): State<DbPool>,
     Path(id): Path<Uuid>,
+    auth: AuthUser,
     ValidatedJson(req): ValidatedJson<UpdateUserRequest>,
 ) -> Result<impl IntoResponse, AppError> {
+    // Verify ownership: user can only update their own account
+    let auth_user_id = auth.claims.user_id().map_err(|e| AppError::InternalServerError(e))?;
+    if auth_user_id != id {
+        return Err(AppError::Forbidden(
+            "You can only update your own account".to_string(),
+        ));
+    }
+
     let repo = Arc::new(PostgresUserRepository::new(pool));
     let use_case = UpdateUserUseCase::new(repo);
 
@@ -136,7 +148,16 @@ pub async fn update_user(
 pub async fn delete_user(
     State(pool): State<DbPool>,
     Path(id): Path<Uuid>,
+    auth: AuthUser,
 ) -> Result<impl IntoResponse, AppError> {
+    // Verify ownership: user can only delete their own account
+    let auth_user_id = auth.claims.user_id().map_err(|e| AppError::InternalServerError(e))?;
+    if auth_user_id != id {
+        return Err(AppError::Forbidden(
+            "You can only delete your own account".to_string(),
+        ));
+    }
+
     let repo = Arc::new(PostgresUserRepository::new(pool));
     let use_case = DeleteUserUseCase::new(repo);
 

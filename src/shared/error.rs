@@ -28,6 +28,10 @@ pub enum AppError {
     NotFound,
     #[error("Conflict: {0}")]
     Conflict(String),
+    #[error("Unauthorized: {0}")]
+    Unauthorized(String),
+    #[error("Forbidden: {0}")]
+    Forbidden(String),
     #[error("Internal server error: {0}")]
     InternalServerError(#[from] anyhow::Error),
 }
@@ -67,6 +71,8 @@ impl IntoResponse for AppError {
             }
             AppError::NotFound => (StatusCode::NOT_FOUND, "Resource not found".to_string()),
             AppError::Conflict(msg) => (StatusCode::CONFLICT, msg),
+            AppError::Unauthorized(msg) => (StatusCode::UNAUTHORIZED, msg),
+            AppError::Forbidden(msg) => (StatusCode::FORBIDDEN, msg),
             AppError::InternalServerError(e) => {
                 tracing::error!("Internal server error: {:?}", e);
                 (
