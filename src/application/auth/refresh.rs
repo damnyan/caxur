@@ -1,9 +1,8 @@
-use crate::domain::auth::{AuthService, NewRefreshToken, RefreshTokenRepository};
+use crate::application::auth::token_utils::{generate_and_store_tokens, hash_token, TokenResponse};
+use crate::domain::auth::{AuthService, RefreshTokenRepository};
 use crate::shared::error::AppError;
-use serde::{Deserialize, Serialize};
-use sha2::{Digest, Sha256};
+use serde::Deserialize;
 use std::sync::Arc;
-use time::OffsetDateTime;
 use validator::Validate;
 
 #[derive(Debug, Deserialize, Validate, utoipa::ToSchema)]
@@ -12,13 +11,7 @@ pub struct RefreshTokenRequest {
     pub refresh_token: String,
 }
 
-#[derive(Debug, Serialize, utoipa::ToSchema)]
-pub struct RefreshTokenResponse {
-    pub access_token: String,
-    pub refresh_token: String,
-    pub token_type: String,
-    pub expires_in: i64,
-}
+pub type RefreshTokenResponse = TokenResponse;
 
 pub struct RefreshTokenUseCase {
     refresh_token_repo: Arc<dyn RefreshTokenRepository>,
@@ -57,9 +50,7 @@ impl RefreshTokenUseCase {
         }
 
         // Hash the refresh token to find it in the database
-        let mut hasher = Sha256::new();
-        hasher.update(req.refresh_token.as_bytes());
-        let token_hash = format!("{:x}", hasher.finalize());
+        let token_hash = hash_token(&req.refresh_token);
 
         // Find refresh token in database
         let stored_token = self
@@ -87,44 +78,15 @@ impl RefreshTokenUseCase {
             .await
             .map_err(|e| AppError::InternalServerError(e))?;
 
-        // Generate new access token
-        let access_token = self
-            .auth_service
-            .generate_access_token(user_id)
-            .map_err(|e| AppError::InternalServerError(e))?;
-
-        // Generate new refresh token
-        let new_refresh_token = self
-            .auth_service
-            .generate_refresh_token(user_id)
-            .map_err(|e| AppError::InternalServerError(e))?;
-
-        // Hash new refresh token for storage
-        let mut hasher = Sha256::new();
-        hasher.update(new_refresh_token.as_bytes());
-        let new_token_hash = format!("{:x}", hasher.finalize());
-
-        // Calculate expiration time
-        let expires_at =
-            OffsetDateTime::now_utc() + time::Duration::seconds(self.refresh_token_expiry);
-
-        // Store new refresh token hash in database
-        let refresh_token_entity = NewRefreshToken {
+        // Generate and store new token pair (preserve user_type)
+        generate_and_store_tokens(
             user_id,
-            token_hash: new_token_hash,
-            expires_at,
-        };
-
-        self.refresh_token_repo
-            .create(refresh_token_entity)
-            .await
-            .map_err(|e| AppError::InternalServerError(e))?;
-
-        Ok(RefreshTokenResponse {
-            access_token,
-            refresh_token: new_refresh_token,
-            token_type: "Bearer".to_string(),
-            expires_in: self.access_token_expiry,
-        })
+            claims.user_type,
+            &self.auth_service,
+            &self.refresh_token_repo,
+            self.access_token_expiry,
+            self.refresh_token_expiry,
+        )
+        .await
     }
 }

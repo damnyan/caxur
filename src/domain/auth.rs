@@ -10,6 +10,8 @@ use uuid::Uuid;
 pub struct Claims {
     /// Subject (user ID)
     pub sub: String,
+    /// User type: "user", "admin", "merchant", etc.
+    pub user_type: String,
     /// Issued at timestamp
     pub iat: i64,
     /// Expiration timestamp
@@ -20,20 +22,22 @@ pub struct Claims {
 }
 
 impl Claims {
-    pub fn new_access_token(user_id: Uuid, expiry_seconds: i64) -> Self {
+    pub fn new_access_token(user_id: Uuid, user_type: String, expiry_seconds: i64) -> Self {
         let now = OffsetDateTime::now_utc().unix_timestamp();
         Self {
             sub: user_id.to_string(),
+            user_type,
             iat: now,
             exp: now + expiry_seconds,
             token_type: "access".to_string(),
         }
     }
 
-    pub fn new_refresh_token(user_id: Uuid, expiry_seconds: i64) -> Self {
+    pub fn new_refresh_token(user_id: Uuid, user_type: String, expiry_seconds: i64) -> Self {
         let now = OffsetDateTime::now_utc().unix_timestamp();
         Self {
             sub: user_id.to_string(),
+            user_type,
             iat: now,
             exp: now + expiry_seconds,
             token_type: "refresh".to_string(),
@@ -50,6 +54,7 @@ impl Claims {
 pub struct RefreshToken {
     pub id: Uuid,
     pub user_id: Uuid,
+    pub user_type: String,
     pub token_hash: String,
     pub expires_at: OffsetDateTime,
     pub created_at: OffsetDateTime,
@@ -59,6 +64,7 @@ pub struct RefreshToken {
 #[derive(Debug, Clone)]
 pub struct NewRefreshToken {
     pub user_id: Uuid,
+    pub user_type: String,
     pub token_hash: String,
     pub expires_at: OffsetDateTime,
 }
@@ -86,10 +92,10 @@ pub trait RefreshTokenRepository: Send + Sync {
 #[async_trait]
 pub trait AuthService: Send + Sync {
     /// Generate an access token for a user
-    fn generate_access_token(&self, user_id: Uuid) -> Result<String>;
+    fn generate_access_token(&self, user_id: Uuid, user_type: String) -> Result<String>;
 
     /// Generate a refresh token for a user
-    fn generate_refresh_token(&self, user_id: Uuid) -> Result<String>;
+    fn generate_refresh_token(&self, user_id: Uuid, user_type: String) -> Result<String>;
 
     /// Validate and decode a token
     fn validate_token(&self, token: &str) -> Result<Claims>;

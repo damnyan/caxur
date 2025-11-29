@@ -44,16 +44,16 @@ impl JwtAuthService {
 }
 
 impl AuthService for JwtAuthService {
-    fn generate_access_token(&self, user_id: Uuid) -> Result<String> {
-        let claims = Claims::new_access_token(user_id, self.access_token_expiry);
+    fn generate_access_token(&self, user_id: Uuid, user_type: String) -> Result<String> {
+        let claims = Claims::new_access_token(user_id, user_type, self.access_token_expiry);
         let header = Header::new(Algorithm::ES256);
 
         encode(&header, &claims, &self.encoding_key)
             .map_err(|e| anyhow::anyhow!("Failed to generate access token: {}", e))
     }
 
-    fn generate_refresh_token(&self, user_id: Uuid) -> Result<String> {
-        let claims = Claims::new_refresh_token(user_id, self.refresh_token_expiry);
+    fn generate_refresh_token(&self, user_id: Uuid, user_type: String) -> Result<String> {
+        let claims = Claims::new_refresh_token(user_id, user_type, self.refresh_token_expiry);
         let header = Header::new(Algorithm::ES256);
 
         encode(&header, &claims, &self.encoding_key)
@@ -84,10 +84,13 @@ mod tests {
 
         if let Ok(service) = service {
             let user_id = Uuid::new_v4();
-            let token = service.generate_access_token(user_id).unwrap();
+            let token = service
+                .generate_access_token(user_id, "user".to_string())
+                .unwrap();
 
             let claims = service.validate_token(&token).unwrap();
             assert_eq!(claims.sub, user_id.to_string());
+            assert_eq!(claims.user_type, "user");
             assert_eq!(claims.token_type, "access");
         }
     }
@@ -99,10 +102,13 @@ mod tests {
 
         if let Ok(service) = service {
             let user_id = Uuid::new_v4();
-            let token = service.generate_refresh_token(user_id).unwrap();
+            let token = service
+                .generate_refresh_token(user_id, "user".to_string())
+                .unwrap();
 
             let claims = service.validate_token(&token).unwrap();
             assert_eq!(claims.sub, user_id.to_string());
+            assert_eq!(claims.user_type, "user");
             assert_eq!(claims.token_type, "refresh");
         }
     }

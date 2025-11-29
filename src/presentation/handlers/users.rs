@@ -11,10 +11,10 @@ use crate::shared::error::{AppError, ErrorResponse};
 use crate::shared::response::ApiResponse;
 use crate::shared::validation::ValidatedJson;
 use axum::{
+    Json,
     extract::{Path, Query, State},
     http::StatusCode,
     response::IntoResponse,
-    Json,
 };
 use serde_json::json;
 use std::sync::Arc;
@@ -52,7 +52,11 @@ pub async fn create_user(
     ),
     responses(
         (status = 200, description = "User found", body = ApiResponse<User>),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
         (status = 404, description = "User not found", body = ErrorResponse)
+    ),
+    security(
+        ("bearer_auth" = [])
     ),
     tag = "users"
 )]
@@ -78,7 +82,11 @@ pub async fn get_user(
     path = "/api/v1/users",
     params(ListUsersRequest),
     responses(
-        (status = 200, description = "List of users", body = ApiResponse<Vec<User>>)
+        (status = 200, description = "List of users", body = ApiResponse<Vec<User>>),
+        (status = 401, description = "Unauthorized", body = ErrorResponse)
+    ),
+    security(
+        ("bearer_auth" = [])
     ),
     tag = "users"
 )]
@@ -105,8 +113,13 @@ pub async fn list_users(
     request_body = UpdateUserRequest,
     responses(
         (status = 200, description = "User updated successfully", body = ApiResponse<User>),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden - Can only update your own account", body = ErrorResponse),
         (status = 404, description = "User not found", body = ErrorResponse),
         (status = 422, description = "Validation error", body = ErrorResponse)
+    ),
+    security(
+        ("bearer_auth" = [])
     ),
     tag = "users"
 )]
@@ -117,7 +130,10 @@ pub async fn update_user(
     ValidatedJson(req): ValidatedJson<UpdateUserRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     // Verify ownership: user can only update their own account
-    let auth_user_id = auth.claims.user_id().map_err(|e| AppError::InternalServerError(e))?;
+    let auth_user_id = auth
+        .claims
+        .user_id()
+        .map_err(|e| AppError::InternalServerError(e))?;
     if auth_user_id != id {
         return Err(AppError::Forbidden(
             "You can only update your own account".to_string(),
@@ -141,7 +157,12 @@ pub async fn update_user(
     ),
     responses(
         (status = 200, description = "User deleted successfully"),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 403, description = "Forbidden - Can only delete your own account", body = ErrorResponse),
         (status = 404, description = "User not found", body = ErrorResponse)
+    ),
+    security(
+        ("bearer_auth" = [])
     ),
     tag = "users"
 )]
@@ -151,7 +172,10 @@ pub async fn delete_user(
     auth: AuthUser,
 ) -> Result<impl IntoResponse, AppError> {
     // Verify ownership: user can only delete their own account
-    let auth_user_id = auth.claims.user_id().map_err(|e| AppError::InternalServerError(e))?;
+    let auth_user_id = auth
+        .claims
+        .user_id()
+        .map_err(|e| AppError::InternalServerError(e))?;
     if auth_user_id != id {
         return Err(AppError::Forbidden(
             "You can only delete your own account".to_string(),

@@ -20,12 +20,13 @@ impl RefreshTokenRepository for PostgresRefreshTokenRepository {
     async fn create(&self, token: NewRefreshToken) -> Result<RefreshToken> {
         let refresh_token = sqlx::query_as::<_, RefreshToken>(
             r#"
-            INSERT INTO refresh_tokens (user_id, token_hash, expires_at)
-            VALUES ($1, $2, $3)
-            RETURNING id, user_id, token_hash, expires_at, created_at
+            INSERT INTO refresh_tokens (user_id, user_type, token_hash, expires_at)
+            VALUES ($1, $2, $3, $4)
+            RETURNING id, user_id, user_type, token_hash, expires_at, created_at
             "#,
         )
         .bind(token.user_id)
+        .bind(&token.user_type)
         .bind(&token.token_hash)
         .bind(token.expires_at)
         .fetch_one(&self.pool)
@@ -37,7 +38,7 @@ impl RefreshTokenRepository for PostgresRefreshTokenRepository {
     async fn find_by_hash(&self, token_hash: &str) -> Result<Option<RefreshToken>> {
         let refresh_token = sqlx::query_as::<_, RefreshToken>(
             r#"
-            SELECT id, user_id, token_hash, expires_at, created_at
+            SELECT id, user_id, user_type, token_hash, expires_at, created_at
             FROM refresh_tokens
             WHERE token_hash = $1 AND expires_at > NOW()
             "#,
