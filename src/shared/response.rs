@@ -17,3 +17,39 @@ impl<T> ApiResponse<T> {
         self
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn test_api_response_new() {
+        let data = "test data";
+        let response = ApiResponse::new(data);
+
+        assert_eq!(response.data, "test data");
+        assert!(response.meta.is_none());
+    }
+
+    #[test]
+    fn test_api_response_with_meta() {
+        let data = "test data";
+        let meta = json!({"page": 1, "total": 10});
+        let response = ApiResponse::new(data).with_meta(meta.clone());
+
+        assert_eq!(response.data, "test data");
+        assert_eq!(response.meta, Some(meta));
+    }
+
+    #[test]
+    fn test_api_response_serialization() {
+        let data = "test data";
+        let meta = json!({"page": 1});
+        let response = ApiResponse::new(data).with_meta(meta);
+
+        let json = serde_json::to_value(&response).unwrap();
+        assert_eq!(json["data"], "test data");
+        assert_eq!(json["meta"]["page"], 1);
+    }
+}

@@ -163,6 +163,7 @@ dependencies = [
  "async-trait",
  "axum",
  "dotenvy",
+ "http-body-util",
  "serde",
  "serde_json",
  "sqlx",
