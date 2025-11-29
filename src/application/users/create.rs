@@ -1,3 +1,4 @@
+use crate::domain::password::PasswordService;
 use crate::domain::users::{NewUser, User, UserRepository};
 use crate::shared::error::AppError;
 use serde::Deserialize;
@@ -18,6 +19,21 @@ pub struct CreateUserRequest {
     pub password: String,
 }
 
+impl CreateUserRequest {
+    /// Custom async validation to check if email already exists
+    pub async fn validate_unique_email(
+        &self,
+        repo: &Arc<dyn UserRepository>,
+    ) -> Result<(), AppError> {
+        if let Some(_) = repo.find_by_email(&self.email).await? {
+            return Err(AppError::ValidationError(
+                "Email already exists".to_string(),
+            ));
+        }
+        Ok(())
+    }
+}
+
 pub struct CreateUserUseCase {
     repo: Arc<dyn UserRepository>,
 }
@@ -28,18 +44,17 @@ impl CreateUserUseCase {
     }
 
     pub async fn execute(&self, req: CreateUserRequest) -> Result<User, AppError> {
-        // Check if email already exists
-        if let Some(_) = self.repo.find_by_email(&req.email).await? {
-            return Err(AppError::ValidationError(
-                "Email already exists".to_string(),
-            ));
-        }
+        // Validate unique email using custom validator
+        req.validate_unique_email(&self.repo).await?;
 
-        // In a real app, you'd hash the password here
+        // Hash the password using Argon2
+        let password_hash = PasswordService::hash_password(&req.password)
+            .map_err(|e| AppError::InternalServerError(e))?;
+
         let new_user = NewUser {
             username: req.username,
             email: req.email,
-            password_hash: req.password, // Placeholder for hashing
+            password_hash,
         };
 
         Ok(self.repo.create(new_user).await?)
@@ -66,5 +81,38 @@ mod tests {
 
         assert_eq!(user.username, "testuser");
         assert_eq!(user.email, "test@example.com");
+    }
+
+    #[tokio::test]
+    async fn test_create_user_duplicate_email() {
+        let repo = Arc::new(MockUserRepository::default());
+        let use_case = CreateUserUseCase::new(repo.clone());
+
+        // Create first user
+        let req1 = CreateUserRequest {
+            username: "user1".to_string(),
+            email: "duplicate@example.com".to_string(),
+            password: "password123".to_string(),
+        };
+        use_case
+            .execute(req1)
+            .await
+            .expect("Failed to create first user");
+
+        // Try to create second user with same email
+        let req2 = CreateUserRequest {
+            username: "user2".to_string(),
+            email: "duplicate@example.com".to_string(),
+            password: "password456".to_string(),
+        };
+        let result = use_case.execute(req2).await;
+
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            AppError::ValidationError(msg) => {
+                assert_eq!(msg, "Email already exists");
+            }
+            _ => panic!("Expected ValidationError"),
+        }
     }
 }
