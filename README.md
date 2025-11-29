@@ -59,8 +59,8 @@ src/
 
 1.  **Clone the repository**:
     ```bash
-    git clone <your-repo-url>
-    cd <your-repo-name>
+    git clone https://github.com/damnyan/caxur.git
+    cd caxur
     ```
 
 2.  **Setup Environment**:
