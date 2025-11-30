@@ -1,20 +1,45 @@
 use crate::application::auth::login::{LoginRequest, LoginResponse, LoginUseCase};
-use crate::application::auth::refresh::{RefreshTokenRequest, RefreshTokenResponse, RefreshTokenUseCase};
+use crate::application::auth::refresh::{RefreshTokenRequest, RefreshTokenUseCase};
 use crate::domain::auth::{AuthService, Claims};
 use crate::infrastructure::auth::JwtAuthService;
 use crate::infrastructure::db::DbPool;
 use crate::infrastructure::repositories::refresh_tokens::PostgresRefreshTokenRepository;
 use crate::infrastructure::repositories::users::PostgresUserRepository;
 use crate::shared::error::{AppError, ErrorResponse};
-use crate::shared::response::ApiResponse;
+use crate::shared::response::{JsonApiResource, JsonApiResponse};
 use crate::shared::validation::ValidatedJson;
 use axum::{
-    extract::{FromRequestParts, State},
-    http::{request::Parts, StatusCode},
-    response::IntoResponse,
     Json,
+    extract::{FromRequestParts, State},
+    http::{StatusCode, request::Parts},
+    response::IntoResponse,
 };
+use serde::Serialize;
 use std::sync::Arc;
+use utoipa::ToSchema;
+
+#[derive(Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct AuthTokenResource {
+    pub access_token: String,
+    pub refresh_token: String,
+    pub token_type: String,
+    pub expires_in: i64,
+}
+
+impl From<LoginResponse> for AuthTokenResource {
+    fn from(response: LoginResponse) -> Self {
+        Self {
+            access_token: response.access_token,
+            refresh_token: response.refresh_token,
+            token_type: response.token_type,
+            expires_in: response.expires_in,
+        }
+    }
+}
+
+// RefreshTokenResponse is the same type as LoginResponse (TokenResponse)
+// so we don't need a separate From implementation
 
 /// Login handler
 #[utoipa::path(
@@ -22,7 +47,7 @@ use std::sync::Arc;
     path = "/api/v1/auth/login",
     request_body = LoginRequest,
     responses(
-        (status = 200, description = "Login successful", body = ApiResponse<LoginResponse>),
+        (status = 200, description = "Login successful", body = JsonApiResponse<JsonApiResource<AuthTokenResource>>),
         (status = 401, description = "Invalid credentials", body = ErrorResponse),
         (status = 422, description = "Validation error", body = ErrorResponse)
     ),
@@ -33,8 +58,8 @@ pub async fn login(
     ValidatedJson(req): ValidatedJson<LoginRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     // Get configuration from environment
-    let private_key_path =
-        std::env::var("JWT_PRIVATE_KEY_PATH").unwrap_or_else(|_| "keys/private_key.pem".to_string());
+    let private_key_path = std::env::var("JWT_PRIVATE_KEY_PATH")
+        .unwrap_or_else(|_| "keys/private_key.pem".to_string());
     let public_key_path =
         std::env::var("JWT_PUBLIC_KEY_PATH").unwrap_or_else(|_| "keys/public_key.pem".to_string());
     let access_token_expiry = std::env::var("JWT_ACCESS_TOKEN_EXPIRY")
@@ -70,8 +95,10 @@ pub async fn login(
     );
 
     let response = use_case.execute(req).await?;
+    let resource =
+        JsonApiResource::new("auth-tokens", "session", AuthTokenResource::from(response));
 
-    Ok((StatusCode::OK, Json(ApiResponse::new(response))))
+    Ok((StatusCode::OK, Json(JsonApiResponse::new(resource))))
 }
 
 /// Refresh token handler
@@ -80,7 +107,7 @@ pub async fn login(
     path = "/api/v1/auth/refresh",
     request_body = RefreshTokenRequest,
     responses(
-        (status = 200, description = "Token refreshed successfully", body = ApiResponse<RefreshTokenResponse>),
+        (status = 200, description = "Token refreshed successfully", body = JsonApiResponse<JsonApiResource<AuthTokenResource>>),
         (status = 401, description = "Invalid refresh token", body = ErrorResponse),
         (status = 422, description = "Validation error", body = ErrorResponse)
     ),
@@ -91,8 +118,8 @@ pub async fn refresh_token(
     ValidatedJson(req): ValidatedJson<RefreshTokenRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     // Get configuration from environment
-    let private_key_path =
-        std::env::var("JWT_PRIVATE_KEY_PATH").unwrap_or_else(|_| "keys/private_key.pem".to_string());
+    let private_key_path = std::env::var("JWT_PRIVATE_KEY_PATH")
+        .unwrap_or_else(|_| "keys/private_key.pem".to_string());
     let public_key_path =
         std::env::var("JWT_PUBLIC_KEY_PATH").unwrap_or_else(|_| "keys/public_key.pem".to_string());
     let access_token_expiry = std::env::var("JWT_ACCESS_TOKEN_EXPIRY")
@@ -126,8 +153,10 @@ pub async fn refresh_token(
     );
 
     let response = use_case.execute(req).await?;
+    let resource =
+        JsonApiResource::new("auth-tokens", "session", AuthTokenResource::from(response));
 
-    Ok((StatusCode::OK, Json(ApiResponse::new(response))))
+    Ok((StatusCode::OK, Json(JsonApiResponse::new(resource))))
 }
 
 /// Authenticated user extractor
@@ -142,10 +171,7 @@ where
 {
     type Rejection = AppError;
 
-    async fn from_request_parts(
-        parts: &mut Parts,
-        _state: &S,
-    ) -> Result<Self, Self::Rejection> {
+    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
         // Extract Authorization header
         let auth_header = parts
             .headers
@@ -164,10 +190,10 @@ where
         let token = &auth_header[7..];
 
         // Get configuration from environment
-        let private_key_path =
-            std::env::var("JWT_PRIVATE_KEY_PATH").unwrap_or_else(|_| "keys/private_key.pem".to_string());
-        let public_key_path =
-            std::env::var("JWT_PUBLIC_KEY_PATH").unwrap_or_else(|_| "keys/public_key.pem".to_string());
+        let private_key_path = std::env::var("JWT_PRIVATE_KEY_PATH")
+            .unwrap_or_else(|_| "keys/private_key.pem".to_string());
+        let public_key_path = std::env::var("JWT_PUBLIC_KEY_PATH")
+            .unwrap_or_else(|_| "keys/public_key.pem".to_string());
         let access_token_expiry = std::env::var("JWT_ACCESS_TOKEN_EXPIRY")
             .unwrap_or_else(|_| "900".to_string())
             .parse::<i64>()
@@ -193,9 +219,7 @@ where
 
         // Verify token type is access token
         if claims.token_type != "access" {
-            return Err(AppError::Unauthorized(
-                "Invalid token type".to_string(),
-            ));
+            return Err(AppError::Unauthorized("Invalid token type".to_string()));
         }
 
         Ok(AuthUser { claims })

@@ -1,8 +1,8 @@
 use crate::domain::users::{NewUser, UpdateUser, User, UserRepository};
 use async_trait::async_trait;
 use std::sync::{Arc, Mutex};
-use uuid::Uuid;
 use time::OffsetDateTime;
+use uuid::Uuid;
 
 #[derive(Clone, Default)]
 pub struct MockUserRepository {
@@ -38,16 +38,19 @@ impl UserRepository for MockUserRepository {
         let users = self.users.lock().unwrap();
         let offset = offset as usize;
         let limit = limit as usize;
-        Ok(users.iter()
-            .skip(offset)
-            .take(limit)
-            .cloned()
-            .collect())
+        Ok(users.iter().skip(offset).take(limit).cloned().collect())
+    }
+
+    async fn count(&self) -> Result<i64, anyhow::Error> {
+        let users = self.users.lock().unwrap();
+        Ok(users.len() as i64)
     }
 
     async fn update(&self, id: Uuid, update: UpdateUser) -> Result<User, anyhow::Error> {
         let mut users = self.users.lock().unwrap();
-        let user = users.iter_mut().find(|u| u.id == id)
+        let user = users
+            .iter_mut()
+            .find(|u| u.id == id)
             .ok_or_else(|| anyhow::anyhow!("User not found"))?;
 
         if let Some(username) = update.username {

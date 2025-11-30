@@ -1,7 +1,7 @@
 use crate::shared::error::AppError;
 use axum::{
-    extract::{FromRequest, Request},
     Json,
+    extract::{FromRequest, Request},
 };
 use serde::de::DeserializeOwned;
 use validator::Validate;
@@ -25,7 +25,7 @@ where
 
         value.validate().map_err(|e| {
             // Convert validation errors to a string or structured format
-            // For simplicity, we just dump the error here, but in a real app 
+            // For simplicity, we just dump the error here, but in a real app
             // you'd want to format this to match the JSON:API error object structure more closely
             AppError::ValidationError(e.to_string())
         })?;

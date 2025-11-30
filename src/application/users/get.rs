@@ -25,7 +25,7 @@ mod tests {
     #[tokio::test]
     async fn test_get_user() {
         let repo = Arc::new(MockUserRepository::default());
-        
+
         // Create a user first
         let new_user = NewUser {
             username: "testuser".to_string(),

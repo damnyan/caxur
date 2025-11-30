@@ -41,6 +41,7 @@ pub trait UserRepository: Send + Sync {
     async fn find_by_id(&self, id: Uuid) -> Result<Option<User>, anyhow::Error>;
     async fn find_by_email(&self, email: &str) -> Result<Option<User>, anyhow::Error>;
     async fn find_all(&self, limit: i64, offset: i64) -> Result<Vec<User>, anyhow::Error>;
+    async fn count(&self) -> Result<i64, anyhow::Error>;
     async fn update(&self, id: Uuid, update: UpdateUser) -> Result<User, anyhow::Error>;
     async fn delete(&self, id: Uuid) -> Result<bool, anyhow::Error>;
 }

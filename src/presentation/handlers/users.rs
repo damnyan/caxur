@@ -3,12 +3,12 @@ use crate::application::users::delete::DeleteUserUseCase;
 use crate::application::users::get::GetUserUseCase;
 use crate::application::users::list::{ListUsersRequest, ListUsersUseCase};
 use crate::application::users::update::{UpdateUserRequest, UpdateUserUseCase};
-use crate::domain::users::User;
+use crate::domain::users::{User, UserRepository};
 use crate::infrastructure::db::DbPool;
 use crate::infrastructure::repositories::users::PostgresUserRepository;
 use crate::presentation::handlers::auth::AuthUser;
 use crate::shared::error::{AppError, ErrorResponse};
-use crate::shared::response::ApiResponse;
+use crate::shared::response::{JsonApiLinks, JsonApiMeta, JsonApiResource, JsonApiResponse};
 use crate::shared::validation::ValidatedJson;
 use axum::{
     Json,
@@ -16,9 +16,37 @@ use axum::{
     http::StatusCode,
     response::IntoResponse,
 };
+use serde::Serialize;
 use serde_json::json;
 use std::sync::Arc;
+use utoipa::ToSchema;
 use uuid::Uuid;
+
+#[derive(Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct UserResource {
+    pub id: String,
+    pub username: String,
+    pub email: String,
+    #[serde(with = "time::serde::iso8601")]
+    #[schema(value_type = String)]
+    pub created_at: time::OffsetDateTime,
+    #[serde(with = "time::serde::iso8601")]
+    #[schema(value_type = String)]
+    pub updated_at: time::OffsetDateTime,
+}
+
+impl From<User> for UserResource {
+    fn from(user: User) -> Self {
+        Self {
+            id: user.id.to_string(),
+            username: user.username,
+            email: user.email,
+            created_at: user.created_at,
+            updated_at: user.updated_at,
+        }
+    }
+}
 
 /// Create a new user
 #[utoipa::path(
@@ -26,7 +54,7 @@ use uuid::Uuid;
     path = "/api/v1/users",
     request_body = CreateUserRequest,
     responses(
-        (status = 201, description = "User created successfully", body = ApiResponse<User>),
+        (status = 201, description = "User created successfully", body = JsonApiResponse<JsonApiResource<UserResource>>),
         (status = 422, description = "Validation error", body = ErrorResponse)
     ),
     tag = "users"
@@ -39,8 +67,9 @@ pub async fn create_user(
     let use_case = CreateUserUseCase::new(repo);
 
     let user = use_case.execute(req).await?;
+    let resource = JsonApiResource::new("users", user.id.to_string(), UserResource::from(user));
 
-    Ok((StatusCode::CREATED, Json(ApiResponse::new(user))))
+    Ok((StatusCode::CREATED, Json(JsonApiResponse::new(resource))))
 }
 
 /// Get a user by ID
@@ -51,7 +80,7 @@ pub async fn create_user(
         ("id" = Uuid, Path, description = "User ID")
     ),
     responses(
-        (status = 200, description = "User found", body = ApiResponse<User>),
+        (status = 200, description = "User found", body = JsonApiResponse<JsonApiResource<UserResource>>),
         (status = 401, description = "Unauthorized", body = ErrorResponse),
         (status = 404, description = "User not found", body = ErrorResponse)
     ),
@@ -71,7 +100,11 @@ pub async fn get_user(
     let user = use_case.execute(id).await?;
 
     match user {
-        Some(user) => Ok((StatusCode::OK, Json(ApiResponse::new(user)))),
+        Some(user) => {
+            let resource =
+                JsonApiResource::new("users", user.id.to_string(), UserResource::from(user));
+            Ok((StatusCode::OK, Json(JsonApiResponse::new(resource))))
+        }
         None => Err(AppError::NotFound),
     }
 }
@@ -82,7 +115,7 @@ pub async fn get_user(
     path = "/api/v1/users",
     params(ListUsersRequest),
     responses(
-        (status = 200, description = "List of users", body = ApiResponse<Vec<User>>),
+        (status = 200, description = "List of users", body = JsonApiResponse<Vec<JsonApiResource<UserResource>>>),
         (status = 401, description = "Unauthorized", body = ErrorResponse)
     ),
     security(
@@ -96,11 +129,78 @@ pub async fn list_users(
     _auth: AuthUser,
 ) -> Result<impl IntoResponse, AppError> {
     let repo = Arc::new(PostgresUserRepository::new(pool));
-    let use_case = ListUsersUseCase::new(repo);
+    let use_case = ListUsersUseCase::new(repo.clone());
+
+    // Capture pagination values before moving req
+    let page_number = req.page.number;
+    let page_size = req.page.size;
 
     let users = use_case.execute(req).await?;
 
-    Ok((StatusCode::OK, Json(ApiResponse::new(users))))
+    // Get total count for pagination
+    let total = repo
+        .count()
+        .await
+        .map_err(|e| AppError::InternalServerError(e))?;
+
+    let resources: Vec<JsonApiResource<UserResource>> = users
+        .into_iter()
+        .map(|user| JsonApiResource::new("users", user.id.to_string(), UserResource::from(user)))
+        .collect();
+
+    // Calculate pagination metadata
+    let total_pages = (total as f64 / page_size as f64).ceil() as i64;
+
+    let meta = JsonApiMeta::new()
+        .with_page(page_number)
+        .with_per_page(page_size)
+        .with_total(total);
+
+    // Generate pagination links
+    let base_url = "/api/v1/users";
+    let mut links = JsonApiLinks::new()
+        .with_self(format!(
+            "{}?page[number]={}&page[size]={}",
+            base_url, page_number, page_size
+        ))
+        .with_first(format!(
+            "{}?page[number]=1&page[size]={}",
+            base_url, page_size
+        ));
+
+    if total_pages > 0 {
+        links = links.with_last(format!(
+            "{}?page[number]={}&page[size]={}",
+            base_url, total_pages, page_size
+        ));
+    }
+
+    if page_number > 1 {
+        links = links.with_prev(format!(
+            "{}?page[number]={}&page[size]={}",
+            base_url,
+            page_number - 1,
+            page_size
+        ));
+    }
+
+    if page_number < total_pages {
+        links = links.with_next(format!(
+            "{}?page[number]={}&page[size]={}",
+            base_url,
+            page_number + 1,
+            page_size
+        ));
+    }
+
+    Ok((
+        StatusCode::OK,
+        Json(
+            JsonApiResponse::new(resources)
+                .with_meta(meta)
+                .with_links(links),
+        ),
+    ))
 }
 
 /// Update a user
@@ -112,7 +212,7 @@ pub async fn list_users(
     ),
     request_body = UpdateUserRequest,
     responses(
-        (status = 200, description = "User updated successfully", body = ApiResponse<User>),
+        (status = 200, description = "User updated successfully", body = JsonApiResponse<JsonApiResource<UserResource>>),
         (status = 401, description = "Unauthorized", body = ErrorResponse),
         (status = 403, description = "Forbidden - Can only update your own account", body = ErrorResponse),
         (status = 404, description = "User not found", body = ErrorResponse),
@@ -144,8 +244,9 @@ pub async fn update_user(
     let use_case = UpdateUserUseCase::new(repo);
 
     let user = use_case.execute(id, req).await?;
+    let resource = JsonApiResource::new("users", user.id.to_string(), UserResource::from(user));
 
-    Ok((StatusCode::OK, Json(ApiResponse::new(user))))
+    Ok((StatusCode::OK, Json(JsonApiResponse::new(resource))))
 }
 
 /// Delete a user
@@ -156,7 +257,7 @@ pub async fn update_user(
         ("id" = Uuid, Path, description = "User ID")
     ),
     responses(
-        (status = 200, description = "User deleted successfully"),
+        (status = 200, description = "User deleted successfully", body = JsonApiResponse<serde_json::Value>),
         (status = 401, description = "Unauthorized", body = ErrorResponse),
         (status = 403, description = "Forbidden - Can only delete your own account", body = ErrorResponse),
         (status = 404, description = "User not found", body = ErrorResponse)
@@ -188,9 +289,10 @@ pub async fn delete_user(
     let deleted = use_case.execute(id).await?;
 
     if deleted {
+        let meta = JsonApiMeta::new().with_extra(json!({ "deleted": true }));
         Ok((
             StatusCode::OK,
-            Json(ApiResponse::new(json!({ "deleted": true }))),
+            Json(JsonApiResponse::new(json!(null)).with_meta(meta)),
         ))
     } else {
         Err(AppError::NotFound)

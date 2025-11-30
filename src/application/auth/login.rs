@@ -1,4 +1,4 @@
-use crate::application::auth::token_utils::{generate_and_store_tokens, TokenResponse};
+use crate::application::auth::token_utils::{TokenResponse, generate_and_store_tokens};
 use crate::domain::auth::{AuthService, RefreshTokenRepository};
 use crate::domain::password::PasswordService;
 use crate::domain::users::UserRepository;

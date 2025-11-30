@@ -1,13 +1,14 @@
 #[allow(unused_imports)]
 use crate::application::auth::login::{LoginRequest, LoginResponse};
-#[allow(unused_imports)]
 use crate::application::auth::refresh::{RefreshTokenRequest, RefreshTokenResponse};
 use crate::application::users::create::CreateUserRequest;
 use crate::application::users::list::ListUsersRequest;
 use crate::application::users::update::UpdateUserRequest;
 use crate::domain::users::User;
-use crate::shared::error::{ErrorDetail, ErrorResponse};
-use crate::shared::response::ApiResponse;
+use crate::presentation::handlers::auth::AuthTokenResource;
+use crate::presentation::handlers::users::UserResource;
+use crate::shared::error::{ErrorResponse, JsonApiError, JsonApiErrorSource};
+use crate::shared::response::{JsonApiLinks, JsonApiMeta, JsonApiResource, JsonApiResponse};
 use utoipa::OpenApi;
 
 #[derive(OpenApi)]
@@ -15,7 +16,7 @@ use utoipa::OpenApi;
     info(
         title = "Caxur User API",
         version = "0.1.0",
-        description = "Clean Architecture REST API with Axum and SQLx",
+        description = "Clean Architecture REST API with Axum and SQLx\n\nThis API follows the JSON:API v1.1 specification for all responses.",
         contact(
             name = "API Support",
             email = "support@example.com"
@@ -32,7 +33,10 @@ use utoipa::OpenApi;
     ),
     components(
         schemas(
+            // Domain models
             User,
+
+            // Request DTOs
             CreateUserRequest,
             UpdateUserRequest,
             ListUsersRequest,
@@ -40,12 +44,27 @@ use utoipa::OpenApi;
             LoginResponse,
             RefreshTokenRequest,
             RefreshTokenResponse,
-            ApiResponse<User>,
-            ApiResponse<Vec<User>>,
-            ApiResponse<LoginResponse>,
-            ApiResponse<RefreshTokenResponse>,
+
+            // JSON:API Resource types
+            UserResource,
+            AuthTokenResource,
+            JsonApiResource<UserResource>,
+            JsonApiResource<AuthTokenResource>,
+
+            // JSON:API Response types
+            JsonApiResponse<JsonApiResource<UserResource>>,
+            JsonApiResponse<Vec<JsonApiResource<UserResource>>>,
+            JsonApiResponse<JsonApiResource<AuthTokenResource>>,
+            JsonApiResponse<serde_json::Value>,
+
+            // JSON:API Metadata and Links
+            JsonApiMeta,
+            JsonApiLinks,
+
+            // JSON:API Error types
             ErrorResponse,
-            ErrorDetail,
+            JsonApiError,
+            JsonApiErrorSource,
         )
     ),
     tags(

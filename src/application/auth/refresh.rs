@@ -1,4 +1,4 @@
-use crate::application::auth::token_utils::{generate_and_store_tokens, hash_token, TokenResponse};
+use crate::application::auth::token_utils::{TokenResponse, generate_and_store_tokens, hash_token};
 use crate::domain::auth::{AuthService, RefreshTokenRepository};
 use crate::shared::error::AppError;
 use serde::Deserialize;
@@ -35,7 +35,10 @@ impl RefreshTokenUseCase {
         }
     }
 
-    pub async fn execute(&self, req: RefreshTokenRequest) -> Result<RefreshTokenResponse, AppError> {
+    pub async fn execute(
+        &self,
+        req: RefreshTokenRequest,
+    ) -> Result<RefreshTokenResponse, AppError> {
         // Validate the refresh token
         let claims = self
             .auth_service
@@ -44,9 +47,7 @@ impl RefreshTokenUseCase {
 
         // Verify token type
         if claims.token_type != "refresh" {
-            return Err(AppError::Unauthorized(
-                "Invalid token type".to_string(),
-            ));
+            return Err(AppError::Unauthorized("Invalid token type".to_string()));
         }
 
         // Hash the refresh token to find it in the database
@@ -58,7 +59,9 @@ impl RefreshTokenUseCase {
             .find_by_hash(&token_hash)
             .await
             .map_err(|e| AppError::InternalServerError(e))?
-            .ok_or_else(|| AppError::Unauthorized("Refresh token not found or expired".to_string()))?;
+            .ok_or_else(|| {
+                AppError::Unauthorized("Refresh token not found or expired".to_string())
+            })?;
 
         // Parse user ID from claims
         let user_id = claims
@@ -67,9 +70,7 @@ impl RefreshTokenUseCase {
 
         // Verify user_id matches
         if stored_token.user_id != user_id {
-            return Err(AppError::Unauthorized(
-                "Token user mismatch".to_string(),
-            ));
+            return Err(AppError::Unauthorized("Token user mismatch".to_string()));
         }
 
         // Delete old refresh token (rotation)

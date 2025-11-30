@@ -25,7 +25,7 @@ mod tests {
     #[tokio::test]
     async fn test_delete_user() {
         let repo = Arc::new(MockUserRepository::default());
-        
+
         let new_user = NewUser {
             username: "testuser".to_string(),
             email: "test@example.com".to_string(),
@@ -38,7 +38,7 @@ mod tests {
         let deleted = use_case.execute(created_user.id).await.unwrap();
 
         assert!(deleted);
-        
+
         // Verify user is actually deleted
         let user = repo.find_by_id(created_user.id).await.unwrap();
         assert!(user.is_none());

@@ -81,6 +81,18 @@ impl UserRepository for PostgresUserRepository {
         Ok(users)
     }
 
+    async fn count(&self) -> Result<i64, anyhow::Error> {
+        let result: (i64,) = sqlx::query_as(
+            r#"
+            SELECT COUNT(*) FROM users
+            "#,
+        )
+        .fetch_one(&self.pool)
+        .await?;
+
+        Ok(result.0)
+    }
+
     async fn update(&self, id: Uuid, update: UpdateUser) -> Result<User, anyhow::Error> {
         // Build dynamic query based on what fields are being updated
         let mut query = String::from("UPDATE users SET ");

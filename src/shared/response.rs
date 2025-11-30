@@ -1,21 +1,180 @@
 use serde::Serialize;
 use utoipa::ToSchema;
 
+/// JSON:API compliant resource wrapper
 #[derive(Serialize, ToSchema)]
-pub struct ApiResponse<T> {
-    pub data: T,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub meta: Option<serde_json::Value>,
+#[serde(rename_all = "camelCase")]
+pub struct JsonApiResource<T> {
+    #[serde(rename = "type")]
+    pub resource_type: String,
+    pub id: String,
+    pub attributes: T,
 }
 
-impl<T> ApiResponse<T> {
+/// JSON:API compliant response for single resource
+#[derive(Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct JsonApiResponse<T> {
+    pub data: T,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub meta: Option<JsonApiMeta>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub links: Option<JsonApiLinks>,
+}
+
+/// JSON:API metadata
+#[derive(Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct JsonApiMeta {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub page: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub per_page: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub total: Option<i64>,
+    #[serde(flatten)]
+    pub extra: Option<serde_json::Value>,
+}
+
+/// JSON:API links for pagination
+#[derive(Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct JsonApiLinks {
+    #[serde(rename = "self")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub self_link: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub first: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub last: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub prev: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub next: Option<String>,
+}
+
+impl<T> JsonApiResponse<T> {
+    /// Create a new JSON:API response with data
     pub fn new(data: T) -> Self {
-        Self { data, meta: None }
+        Self {
+            data,
+            meta: None,
+            links: None,
+        }
     }
 
-    pub fn with_meta(mut self, meta: serde_json::Value) -> Self {
+    /// Add metadata to the response
+    pub fn with_meta(mut self, meta: JsonApiMeta) -> Self {
         self.meta = Some(meta);
         self
+    }
+
+    /// Add links to the response
+    pub fn with_links(mut self, links: JsonApiLinks) -> Self {
+        self.links = Some(links);
+        self
+    }
+}
+
+impl<T: Serialize> JsonApiResource<T> {
+    /// Create a new JSON:API resource
+    pub fn new(resource_type: impl Into<String>, id: impl Into<String>, attributes: T) -> Self {
+        Self {
+            resource_type: resource_type.into(),
+            id: id.into(),
+            attributes,
+        }
+    }
+}
+
+impl JsonApiMeta {
+    /// Create new metadata
+    pub fn new() -> Self {
+        Self {
+            total: None,
+            page: None,
+            per_page: None,
+            extra: None,
+        }
+    }
+
+    /// Set total count
+    pub fn with_total(mut self, total: i64) -> Self {
+        self.total = Some(total);
+        self
+    }
+
+    /// Set page number
+    pub fn with_page(mut self, page: i64) -> Self {
+        self.page = Some(page);
+        self
+    }
+
+    /// Set per_page count
+    pub fn with_per_page(mut self, per_page: i64) -> Self {
+        self.per_page = Some(per_page);
+        self
+    }
+
+    /// Add extra metadata
+    pub fn with_extra(mut self, extra: serde_json::Value) -> Self {
+        self.extra = Some(extra);
+        self
+    }
+}
+
+impl Default for JsonApiMeta {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl JsonApiLinks {
+    /// Create new links
+    pub fn new() -> Self {
+        Self {
+            self_link: None,
+            first: None,
+            last: None,
+            prev: None,
+            next: None,
+        }
+    }
+
+    /// Set self link
+    pub fn with_self(mut self, self_link: impl Into<String>) -> Self {
+        self.self_link = Some(self_link.into());
+        self
+    }
+
+    /// Set first link
+    pub fn with_first(mut self, first: impl Into<String>) -> Self {
+        self.first = Some(first.into());
+        self
+    }
+
+    /// Set last link
+    pub fn with_last(mut self, last: impl Into<String>) -> Self {
+        self.last = Some(last.into());
+        self
+    }
+
+    /// Set prev link
+    pub fn with_prev(mut self, prev: impl Into<String>) -> Self {
+        self.prev = Some(prev.into());
+        self
+    }
+
+    /// Set next link
+    pub fn with_next(mut self, next: impl Into<String>) -> Self {
+        self.next = Some(next.into());
+        self
+    }
+}
+
+impl Default for JsonApiLinks {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -25,32 +184,61 @@ mod tests {
     use serde_json::json;
 
     #[test]
-    fn test_api_response_new() {
-        let data = "test data";
-        let response = ApiResponse::new(data);
+    fn test_json_api_resource() {
+        let resource = JsonApiResource::new("users", "123", json!({"name": "John"}));
 
-        assert_eq!(response.data, "test data");
-        assert!(response.meta.is_none());
+        assert_eq!(resource.resource_type, "users");
+        assert_eq!(resource.id, "123");
+        assert_eq!(resource.attributes, json!({"name": "John"}));
     }
 
     #[test]
-    fn test_api_response_with_meta() {
-        let data = "test data";
-        let meta = json!({"page": 1, "total": 10});
-        let response = ApiResponse::new(data).with_meta(meta.clone());
-
-        assert_eq!(response.data, "test data");
-        assert_eq!(response.meta, Some(meta));
-    }
-
-    #[test]
-    fn test_api_response_serialization() {
-        let data = "test data";
-        let meta = json!({"page": 1});
-        let response = ApiResponse::new(data).with_meta(meta);
+    fn test_json_api_response() {
+        let resource = JsonApiResource::new("users", "123", json!({"name": "John"}));
+        let response = JsonApiResponse::new(resource);
 
         let json = serde_json::to_value(&response).unwrap();
-        assert_eq!(json["data"], "test data");
+        assert_eq!(json["data"]["type"], "users");
+        assert_eq!(json["data"]["id"], "123");
+        assert_eq!(json["data"]["attributes"]["name"], "John");
+    }
+
+    #[test]
+    fn test_json_api_response_with_meta() {
+        let resource = JsonApiResource::new("users", "123", json!({"name": "John"}));
+        let meta = JsonApiMeta::new().with_total(100).with_page(1);
+        let response = JsonApiResponse::new(resource).with_meta(meta);
+
+        let json = serde_json::to_value(&response).unwrap();
+        assert_eq!(json["meta"]["total"], 100);
         assert_eq!(json["meta"]["page"], 1);
+    }
+
+    #[test]
+    fn test_json_api_response_with_links() {
+        let resource = JsonApiResource::new("users", "123", json!({"name": "John"}));
+        let links = JsonApiLinks::new()
+            .with_self("/api/v1/users/123")
+            .with_first("/api/v1/users?page=1");
+        let response = JsonApiResponse::new(resource).with_links(links);
+
+        let json = serde_json::to_value(&response).unwrap();
+        assert_eq!(json["links"]["self"], "/api/v1/users/123");
+        assert_eq!(json["links"]["first"], "/api/v1/users?page=1");
+    }
+
+    #[test]
+    fn test_json_api_collection_response() {
+        let resources = vec![
+            JsonApiResource::new("users", "1", json!({"name": "John"})),
+            JsonApiResource::new("users", "2", json!({"name": "Jane"})),
+        ];
+        let meta = JsonApiMeta::new().with_total(2);
+        let response = JsonApiResponse::new(resources).with_meta(meta);
+
+        let json = serde_json::to_value(&response).unwrap();
+        assert!(json["data"].is_array());
+        assert_eq!(json["data"].as_array().unwrap().len(), 2);
+        assert_eq!(json["meta"]["total"], 2);
     }
 }

@@ -4,22 +4,46 @@ use std::sync::Arc;
 use utoipa::{IntoParams, ToSchema};
 
 #[derive(Deserialize, IntoParams, ToSchema)]
-pub struct ListUsersRequest {
+pub struct PageParams {
     /// Page number (1-indexed)
-    #[serde(default = "default_page")]
+    #[serde(default = "default_number")]
     #[param(example = 1, minimum = 1)]
-    pub page: i64,
+    pub number: i64,
     /// Number of items per page
-    #[serde(default = "default_per_page")]
+    #[serde(default = "default_size")]
     #[param(example = 20, minimum = 1, maximum = 100)]
-    pub per_page: i64,
+    pub size: i64,
+    /// Cursor for cursor-based pagination (future use)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cursor: Option<String>,
 }
 
-fn default_page() -> i64 {
+#[derive(Deserialize, IntoParams, ToSchema)]
+pub struct ListUsersRequest {
+    /// Pagination parameters
+    #[serde(default)]
+    pub page: PageParams,
+    /// Sort fields (comma-separated, prefix with - for descending) (future use)
+    /// Example: "created_at" or "-created_at,username"
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sort: Option<String>,
+}
+
+impl Default for PageParams {
+    fn default() -> Self {
+        Self {
+            number: default_number(),
+            size: default_size(),
+            cursor: None,
+        }
+    }
+}
+
+fn default_number() -> i64 {
     1
 }
 
-fn default_per_page() -> i64 {
+fn default_size() -> i64 {
     20
 }
 
@@ -34,8 +58,8 @@ impl ListUsersUseCase {
 
     pub async fn execute(&self, req: ListUsersRequest) -> Result<Vec<User>, anyhow::Error> {
         // Enforce reasonable limits
-        let per_page = req.per_page.min(100).max(1);
-        let page = req.page.max(1);
+        let per_page = req.page.size.min(100).max(1);
+        let page = req.page.number.max(1);
 
         // Calculate offset from page number (page is 1-indexed)
         let offset = (page - 1) * per_page;
@@ -66,8 +90,12 @@ mod tests {
 
         let use_case = ListUsersUseCase::new(repo);
         let req = ListUsersRequest {
-            page: 1,
-            per_page: 10,
+            page: PageParams {
+                number: 1,
+                size: 10,
+                cursor: None,
+            },
+            sort: None,
         };
         let users = use_case.execute(req).await.unwrap();
 
@@ -89,8 +117,12 @@ mod tests {
 
         let use_case = ListUsersUseCase::new(repo);
         let req = ListUsersRequest {
-            page: 1,
-            per_page: 2,
+            page: PageParams {
+                number: 1,
+                size: 2,
+                cursor: None,
+            },
+            sort: None,
         };
         let users = use_case.execute(req).await.unwrap();
 
@@ -114,8 +146,12 @@ mod tests {
 
         // Get page 2 with 2 items per page
         let req = ListUsersRequest {
-            page: 2,
-            per_page: 2,
+            page: PageParams {
+                number: 2,
+                size: 2,
+                cursor: None,
+            },
+            sort: None,
         };
         let users = use_case.execute(req).await.unwrap();
 

@@ -1,7 +1,7 @@
 use crate::infrastructure::db::DbPool;
 use crate::presentation::openapi::ApiDoc;
 use crate::presentation::routes;
-use axum::{routing::get, Router};
+use axum::{Router, routing::get};
 use tower_http::trace::TraceLayer;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
