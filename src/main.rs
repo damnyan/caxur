@@ -1,8 +1,5 @@
-mod application;
-mod domain;
-mod infrastructure;
-mod presentation;
-mod shared;
+use caxur::infrastructure;
+use caxur::presentation;
 
 use dotenvy::dotenv;
 use std::env;
