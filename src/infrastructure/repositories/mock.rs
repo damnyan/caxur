@@ -74,3 +74,51 @@ impl UserRepository for MockUserRepository {
         Ok(users.len() < len_before)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_mock_count() {
+        let repo = MockUserRepository::default();
+
+        // Initially empty
+        let count = repo.count().await.unwrap();
+        assert_eq!(count, 0);
+
+        // Add a user
+        repo.create(NewUser {
+            username: "test".to_string(),
+            email: "test@example.com".to_string(),
+            password_hash: "hash".to_string(),
+        })
+        .await
+        .unwrap();
+
+        let count = repo.count().await.unwrap();
+        assert_eq!(count, 1);
+    }
+
+    #[tokio::test]
+    async fn test_mock_find_all_pagination() {
+        let repo = MockUserRepository::default();
+
+        // Create 5 users
+        for i in 0..5 {
+            repo.create(NewUser {
+                username: format!("user{}", i),
+                email: format!("user{}@example.com", i),
+                password_hash: "hash".to_string(),
+            })
+            .await
+            .unwrap();
+        }
+
+        // Test pagination
+        let users = repo.find_all(2, 1).await.unwrap();
+        assert_eq!(users.len(), 2);
+        assert_eq!(users[0].username, "user1");
+        assert_eq!(users[1].username, "user2");
+    }
+}

@@ -9,7 +9,6 @@ use validator::Validate;
 #[derive(Debug, Clone, Copy, Default)]
 pub struct ValidatedJson<T>(pub T);
 
-use async_trait::async_trait;
 
 impl<T, S> FromRequest<S> for ValidatedJson<T>
 where
