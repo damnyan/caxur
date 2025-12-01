@@ -270,4 +270,208 @@ mod tests {
         assert_eq!(error.detail, "Invalid data");
         assert!(error.source.is_some());
     }
+
+    #[tokio::test]
+    async fn test_conflict_error_response() {
+        let err = AppError::Conflict("Resource already exists".to_string());
+        let response = err.into_response();
+
+        assert_eq!(response.status(), StatusCode::CONFLICT);
+
+        let body_bytes = response.into_body().collect().await.unwrap().to_bytes();
+        let body_json: serde_json::Value = serde_json::from_slice(&body_bytes).unwrap();
+
+        assert_eq!(body_json["errors"][0]["status"], "409");
+        assert_eq!(body_json["errors"][0]["title"], "Conflict");
+        assert_eq!(body_json["errors"][0]["detail"], "Resource already exists");
+        assert_eq!(body_json["errors"][0]["code"], "conflict");
+    }
+
+    #[tokio::test]
+    async fn test_forbidden_error_response() {
+        let err = AppError::Forbidden("Access denied".to_string());
+        let response = err.into_response();
+
+        assert_eq!(response.status(), StatusCode::FORBIDDEN);
+
+        let body_bytes = response.into_body().collect().await.unwrap().to_bytes();
+        let body_json: serde_json::Value = serde_json::from_slice(&body_bytes).unwrap();
+
+        assert_eq!(body_json["errors"][0]["status"], "403");
+        assert_eq!(body_json["errors"][0]["title"], "Forbidden");
+        assert_eq!(body_json["errors"][0]["detail"], "Access denied");
+        assert_eq!(body_json["errors"][0]["code"], "forbidden");
+    }
+
+    #[tokio::test]
+    async fn test_internal_server_error_response() {
+        let err = AppError::InternalServerError(anyhow::anyhow!("Something went wrong"));
+        let response = err.into_response();
+
+        assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+
+        let body_bytes = response.into_body().collect().await.unwrap().to_bytes();
+        let body_json: serde_json::Value = serde_json::from_slice(&body_bytes).unwrap();
+
+        assert_eq!(body_json["errors"][0]["status"], "500");
+        assert_eq!(body_json["errors"][0]["title"], "Internal Server Error");
+        assert_eq!(
+            body_json["errors"][0]["detail"],
+            "An unexpected error occurred"
+        );
+        assert_eq!(body_json["errors"][0]["code"], "internal_error");
+    }
+
+    #[test]
+    fn test_json_api_error_source_parameter() {
+        let source = JsonApiErrorSource::parameter("email");
+
+        assert!(source.pointer.is_none());
+        assert_eq!(source.parameter, Some("email".to_string()));
+    }
+
+    // Mock DatabaseError implementation for testing
+    #[derive(Debug)]
+    struct MockDatabaseError {
+        message: String,
+        is_unique: bool,
+    }
+
+    impl MockDatabaseError {
+        fn new_unique_violation(message: String) -> Self {
+            Self {
+                message,
+                is_unique: true,
+            }
+        }
+    }
+
+    impl std::fmt::Display for MockDatabaseError {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            write!(f, "{}", self.message)
+        }
+    }
+
+    impl std::error::Error for MockDatabaseError {}
+
+    impl sqlx::error::DatabaseError for MockDatabaseError {
+        fn message(&self) -> &str {
+            &self.message
+        }
+
+        fn kind(&self) -> sqlx::error::ErrorKind {
+            if self.is_unique {
+                sqlx::error::ErrorKind::UniqueViolation
+            } else {
+                sqlx::error::ErrorKind::Other
+            }
+        }
+
+        fn as_error(&self) -> &(dyn std::error::Error + Send + Sync + 'static) {
+            self
+        }
+
+        fn as_error_mut(&mut self) -> &mut (dyn std::error::Error + Send + Sync + 'static) {
+            self
+        }
+
+        fn into_error(self: Box<Self>) -> Box<dyn std::error::Error + Send + Sync + 'static> {
+            self
+        }
+
+        fn is_unique_violation(&self) -> bool {
+            self.is_unique
+        }
+    }
+
+    #[tokio::test]
+    async fn test_database_error_unique_violation_username() {
+        let db_error = sqlx::Error::Database(Box::new(MockDatabaseError::new_unique_violation(
+            "duplicate key value violates unique constraint \"users_username_key\"".to_string(),
+        )));
+
+        let err = AppError::DatabaseError(db_error);
+        let response = err.into_response();
+
+        assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+
+        let body_bytes = response.into_body().collect().await.unwrap().to_bytes();
+        let body_json: serde_json::Value = serde_json::from_slice(&body_bytes).unwrap();
+
+        assert_eq!(body_json["errors"][0]["status"], "422");
+        assert_eq!(
+            body_json["errors"][0]["title"],
+            "Unique Constraint Violation"
+        );
+        assert_eq!(body_json["errors"][0]["detail"], "Username already exists");
+        assert_eq!(body_json["errors"][0]["code"], "unique_violation");
+    }
+
+    #[tokio::test]
+    async fn test_database_error_unique_violation_email() {
+        let db_error = sqlx::Error::Database(Box::new(MockDatabaseError::new_unique_violation(
+            "duplicate key value violates unique constraint \"users_email_key\"".to_string(),
+        )));
+
+        let err = AppError::DatabaseError(db_error);
+        let response = err.into_response();
+
+        assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+
+        let body_bytes = response.into_body().collect().await.unwrap().to_bytes();
+        let body_json: serde_json::Value = serde_json::from_slice(&body_bytes).unwrap();
+
+        assert_eq!(body_json["errors"][0]["status"], "422");
+        assert_eq!(
+            body_json["errors"][0]["title"],
+            "Unique Constraint Violation"
+        );
+        assert_eq!(body_json["errors"][0]["detail"], "Email already exists");
+        assert_eq!(body_json["errors"][0]["code"], "unique_violation");
+    }
+
+    #[tokio::test]
+    async fn test_database_error_unique_violation_generic() {
+        let db_error = sqlx::Error::Database(Box::new(MockDatabaseError::new_unique_violation(
+            "duplicate key value violates unique constraint \"some_other_key\"".to_string(),
+        )));
+
+        let err = AppError::DatabaseError(db_error);
+        let response = err.into_response();
+
+        assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+
+        let body_bytes = response.into_body().collect().await.unwrap().to_bytes();
+        let body_json: serde_json::Value = serde_json::from_slice(&body_bytes).unwrap();
+
+        assert_eq!(body_json["errors"][0]["status"], "422");
+        assert_eq!(
+            body_json["errors"][0]["title"],
+            "Unique Constraint Violation"
+        );
+        assert_eq!(body_json["errors"][0]["detail"], "Resource already exists");
+        assert_eq!(body_json["errors"][0]["code"], "unique_violation");
+    }
+
+    #[tokio::test]
+    async fn test_database_error_generic() {
+        // Create a generic database error (not unique violation)
+        let db_error = sqlx::Error::RowNotFound;
+
+        let err = AppError::DatabaseError(db_error);
+        let response = err.into_response();
+
+        assert_eq!(response.status(), StatusCode::INTERNAL_SERVER_ERROR);
+
+        let body_bytes = response.into_body().collect().await.unwrap().to_bytes();
+        let body_json: serde_json::Value = serde_json::from_slice(&body_bytes).unwrap();
+
+        assert_eq!(body_json["errors"][0]["status"], "500");
+        assert_eq!(body_json["errors"][0]["title"], "Database Error");
+        assert_eq!(
+            body_json["errors"][0]["detail"],
+            "An error occurred while processing your request"
+        );
+        assert_eq!(body_json["errors"][0]["code"], "database_error");
+    }
 }

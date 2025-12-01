@@ -241,4 +241,60 @@ mod tests {
         assert_eq!(json["data"].as_array().unwrap().len(), 2);
         assert_eq!(json["meta"]["total"], 2);
     }
+
+    #[test]
+    fn test_json_api_meta_with_per_page() {
+        let meta = JsonApiMeta::new().with_per_page(20);
+
+        assert_eq!(meta.per_page, Some(20));
+    }
+
+    #[test]
+    fn test_json_api_meta_with_extra() {
+        let meta = JsonApiMeta::new().with_extra(json!({"custom": "value"}));
+
+        assert_eq!(meta.extra, Some(json!({"custom": "value"})));
+    }
+
+    #[test]
+    fn test_json_api_meta_default() {
+        let meta = JsonApiMeta::default();
+
+        assert!(meta.page.is_none());
+        assert!(meta.per_page.is_none());
+        assert!(meta.total.is_none());
+        assert!(meta.extra.is_none());
+    }
+
+    #[test]
+    fn test_json_api_links_with_last() {
+        let links = JsonApiLinks::new().with_last("/api/v1/users?page=10");
+
+        assert_eq!(links.last, Some("/api/v1/users?page=10".to_string()));
+    }
+
+    #[test]
+    fn test_json_api_links_with_prev() {
+        let links = JsonApiLinks::new().with_prev("/api/v1/users?page=1");
+
+        assert_eq!(links.prev, Some("/api/v1/users?page=1".to_string()));
+    }
+
+    #[test]
+    fn test_json_api_links_with_next() {
+        let links = JsonApiLinks::new().with_next("/api/v1/users?page=3");
+
+        assert_eq!(links.next, Some("/api/v1/users?page=3".to_string()));
+    }
+
+    #[test]
+    fn test_json_api_links_default() {
+        let links = JsonApiLinks::default();
+
+        assert!(links.self_link.is_none());
+        assert!(links.first.is_none());
+        assert!(links.last.is_none());
+        assert!(links.prev.is_none());
+        assert!(links.next.is_none());
+    }
 }
