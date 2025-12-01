@@ -1,4 +1,4 @@
-use crate::domain::password::PasswordService;
+use crate::domain::password::PasswordHashingService;
 use crate::domain::users::{UpdateUser, User, UserRepository};
 use crate::shared::error::AppError;
 use serde::Deserialize;
@@ -43,11 +43,18 @@ impl UpdateUserRequest {
 
 pub struct UpdateUserUseCase {
     repo: Arc<dyn UserRepository>,
+    password_hasher: Arc<dyn PasswordHashingService>,
 }
 
 impl UpdateUserUseCase {
-    pub fn new(repo: Arc<dyn UserRepository>) -> Self {
-        Self { repo }
+    pub fn new(
+        repo: Arc<dyn UserRepository>,
+        password_hasher: Arc<dyn PasswordHashingService>,
+    ) -> Self {
+        Self {
+            repo,
+            password_hasher,
+        }
     }
 
     pub async fn execute(&self, id: Uuid, req: UpdateUserRequest) -> Result<User, AppError> {
@@ -63,7 +70,8 @@ impl UpdateUserUseCase {
         // Hash the password if it's being updated
         let password_hash = if let Some(password) = req.password {
             Some(
-                PasswordService::hash_password(&password)
+                self.password_hasher
+                    .hash_password(&password)
                     .map_err(|e| AppError::InternalServerError(e))?,
             )
         } else {
@@ -83,12 +91,14 @@ impl UpdateUserUseCase {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::domain::password::PasswordService;
     use crate::domain::users::NewUser;
     use crate::infrastructure::repositories::mock::MockUserRepository;
 
     #[tokio::test]
     async fn test_update_user() {
         let repo = Arc::new(MockUserRepository::default());
+        let hasher = Arc::new(PasswordService::new());
 
         let new_user = NewUser {
             username: "oldname".to_string(),
@@ -97,7 +107,7 @@ mod tests {
         };
         let created_user = repo.create(new_user).await.unwrap();
 
-        let use_case = UpdateUserUseCase::new(repo);
+        let use_case = UpdateUserUseCase::new(repo, hasher);
         let req = UpdateUserRequest {
             username: Some("newname".to_string()),
             email: None,
@@ -113,7 +123,8 @@ mod tests {
     #[tokio::test]
     async fn test_update_nonexistent_user() {
         let repo = Arc::new(MockUserRepository::default());
-        let use_case = UpdateUserUseCase::new(repo);
+        let hasher = Arc::new(PasswordService::new());
+        let use_case = UpdateUserUseCase::new(repo, hasher);
 
         let req = UpdateUserRequest {
             username: Some("newname".to_string()),
@@ -128,6 +139,7 @@ mod tests {
     #[tokio::test]
     async fn test_update_user_duplicate_email() {
         let repo = Arc::new(MockUserRepository::default());
+        let hasher = Arc::new(PasswordService::new());
 
         // Create two users
         let _user1 = repo
@@ -148,7 +160,7 @@ mod tests {
             .await
             .unwrap();
 
-        let use_case = UpdateUserUseCase::new(repo);
+        let use_case = UpdateUserUseCase::new(repo, hasher);
 
         // Try to update user2 with user1's email
         let req = UpdateUserRequest {
@@ -170,6 +182,7 @@ mod tests {
     #[tokio::test]
     async fn test_update_user_same_email() {
         let repo = Arc::new(MockUserRepository::default());
+        let hasher = Arc::new(PasswordService::new());
 
         let user = repo
             .create(NewUser {
@@ -180,7 +193,7 @@ mod tests {
             .await
             .unwrap();
 
-        let use_case = UpdateUserUseCase::new(repo);
+        let use_case = UpdateUserUseCase::new(repo, hasher);
 
         // Update user with their own email should succeed
         let req = UpdateUserRequest {
@@ -194,5 +207,98 @@ mod tests {
         let updated = result.unwrap();
         assert_eq!(updated.username, "newname");
         assert_eq!(updated.email, "test@example.com");
+    }
+    struct MockErrorRepo;
+
+    #[async_trait::async_trait]
+    impl UserRepository for MockErrorRepo {
+        async fn create(&self, _new_user: NewUser) -> Result<User, anyhow::Error> {
+            unimplemented!()
+        }
+
+        async fn find_by_id(&self, _id: Uuid) -> Result<Option<User>, anyhow::Error> {
+            Err(anyhow::anyhow!("DB Error"))
+        }
+
+        async fn find_by_email(&self, _email: &str) -> Result<Option<User>, anyhow::Error> {
+            unimplemented!()
+        }
+
+        async fn find_all(&self, _limit: i64, _offset: i64) -> Result<Vec<User>, anyhow::Error> {
+            unimplemented!()
+        }
+
+        async fn count(&self) -> Result<i64, anyhow::Error> {
+            unimplemented!()
+        }
+
+        async fn update(&self, _id: Uuid, _update: UpdateUser) -> Result<User, anyhow::Error> {
+            unimplemented!()
+        }
+
+        async fn delete(&self, _id: Uuid) -> Result<bool, anyhow::Error> {
+            unimplemented!()
+        }
+    }
+
+    #[tokio::test]
+    async fn test_update_user_repo_error() {
+        let repo = Arc::new(MockErrorRepo);
+        let hasher = Arc::new(PasswordService::new());
+        let use_case = UpdateUserUseCase::new(repo, hasher);
+
+        let req = UpdateUserRequest {
+            username: Some("newname".to_string()),
+            email: None,
+            password: None,
+        };
+
+        let result = use_case.execute(Uuid::new_v4(), req).await;
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            AppError::InternalServerError(_) => {}
+            _ => {}
+        }
+    }
+
+    struct MockErrorHasher;
+    impl crate::domain::password::PasswordHashingService for MockErrorHasher {
+        fn hash_password(&self, _password: &str) -> anyhow::Result<String> {
+            Err(anyhow::anyhow!("Hashing Error"))
+        }
+        fn verify_password(&self, _password: &str, _hash: &str) -> anyhow::Result<bool> {
+            Ok(true)
+        }
+    }
+
+    #[tokio::test]
+    async fn test_update_user_hashing_error() {
+        let repo = Arc::new(MockUserRepository::default());
+        let hasher = Arc::new(MockErrorHasher);
+
+        // Create user first
+        let new_user = NewUser {
+            username: "user".to_string(),
+            email: "user@example.com".to_string(),
+            password_hash: "hash".to_string(),
+        };
+        let user = repo.create(new_user).await.unwrap();
+
+        let use_case = UpdateUserUseCase::new(repo, hasher);
+
+        let req = UpdateUserRequest {
+            username: None,
+            email: None,
+            password: Some("newpassword".to_string()),
+        };
+
+        let result = use_case.execute(user.id, req).await;
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            AppError::InternalServerError(e) => {
+                assert_eq!(e.to_string(), "Hashing Error");
+            }
+            _ => panic!("Expected InternalServerError"),
+        }
     }
 }

@@ -48,6 +48,8 @@ impl From<User> for UserResource {
     }
 }
 
+use crate::domain::password::PasswordService;
+
 /// Create a new user
 #[utoipa::path(
     post,
@@ -64,7 +66,8 @@ pub async fn create_user(
     ValidatedJson(req): ValidatedJson<CreateUserRequest>,
 ) -> Result<impl IntoResponse, AppError> {
     let repo = Arc::new(PostgresUserRepository::new(pool));
-    let use_case = CreateUserUseCase::new(repo);
+    let hasher = Arc::new(PasswordService::new());
+    let use_case = CreateUserUseCase::new(repo, hasher);
 
     let user = use_case.execute(req).await?;
     let resource = JsonApiResource::new("users", user.id.to_string(), UserResource::from(user));
@@ -241,7 +244,8 @@ pub async fn update_user(
     }
 
     let repo = Arc::new(PostgresUserRepository::new(pool));
-    let use_case = UpdateUserUseCase::new(repo);
+    let hasher = Arc::new(PasswordService::new());
+    let use_case = UpdateUserUseCase::new(repo, hasher);
 
     let user = use_case.execute(id, req).await?;
     let resource = JsonApiResource::new("users", user.id.to_string(), UserResource::from(user));

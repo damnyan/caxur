@@ -100,3 +100,66 @@ pub trait AuthService: Send + Sync {
     /// Validate and decode a token
     fn validate_token(&self, token: &str) -> Result<Claims>;
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use uuid::Uuid;
+
+    #[test]
+    fn test_new_access_token() {
+        let user_id = Uuid::new_v4();
+        let user_type = "user".to_string();
+        let expiry_seconds = 3600;
+
+        let claims = Claims::new_access_token(user_id, user_type.clone(), expiry_seconds);
+
+        assert_eq!(claims.sub, user_id.to_string());
+        assert_eq!(claims.user_type, user_type);
+        assert_eq!(claims.token_type, "access");
+        assert!(claims.iat > 0);
+        assert_eq!(claims.exp, claims.iat + expiry_seconds);
+    }
+
+    #[test]
+    fn test_new_refresh_token() {
+        let user_id = Uuid::new_v4();
+        let user_type = "admin".to_string();
+        let expiry_seconds = 7200;
+
+        let claims = Claims::new_refresh_token(user_id, user_type.clone(), expiry_seconds);
+
+        assert_eq!(claims.sub, user_id.to_string());
+        assert_eq!(claims.user_type, user_type);
+        assert_eq!(claims.token_type, "refresh");
+        assert!(claims.iat > 0);
+        assert_eq!(claims.exp, claims.iat + expiry_seconds);
+    }
+
+    #[test]
+    fn test_user_id_valid() {
+        let user_id = Uuid::new_v4();
+        let claims = Claims {
+            sub: user_id.to_string(),
+            user_type: "user".to_string(),
+            iat: 0,
+            exp: 0,
+            token_type: "access".to_string(),
+        };
+
+        assert_eq!(claims.user_id().unwrap(), user_id);
+    }
+
+    #[test]
+    fn test_user_id_invalid() {
+        let claims = Claims {
+            sub: "invalid-uuid".to_string(),
+            user_type: "user".to_string(),
+            iat: 0,
+            exp: 0,
+            token_type: "access".to_string(),
+        };
+
+        assert!(claims.user_id().is_err());
+    }
+}

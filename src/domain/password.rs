@@ -4,12 +4,21 @@ use argon2::{
     password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString, rand_core::OsRng},
 };
 
+/// Trait for password hashing and verification
+#[async_trait::async_trait]
+pub trait PasswordHashingService: Send + Sync {
+    fn hash_password(&self, password: &str) -> Result<String>;
+    fn verify_password(&self, password: &str, hash: &str) -> Result<bool>;
+}
+
 /// Domain service for password hashing and verification
+#[derive(Clone)]
 pub struct PasswordService;
 
-impl PasswordService {
+#[async_trait::async_trait]
+impl PasswordHashingService for PasswordService {
     /// Hash a plain text password using Argon2
-    pub fn hash_password(password: &str) -> Result<String> {
+    fn hash_password(&self, password: &str) -> Result<String> {
         let salt = SaltString::generate(&mut OsRng);
         let argon2 = Argon2::default();
 
@@ -22,7 +31,7 @@ impl PasswordService {
     }
 
     /// Verify a password against a hash
-    pub fn verify_password(password: &str, hash: &str) -> Result<bool> {
+    fn verify_password(&self, password: &str, hash: &str) -> Result<bool> {
         let parsed_hash =
             PasswordHash::new(hash).map_err(|e| anyhow::anyhow!("Invalid password hash: {}", e))?;
 
@@ -31,6 +40,29 @@ impl PasswordService {
         Ok(argon2
             .verify_password(password.as_bytes(), &parsed_hash)
             .is_ok())
+    }
+}
+
+impl PasswordService {
+    // Keep static methods for backward compatibility if needed, or just use the trait.
+    // For now, let's keep them as wrappers around a default instance to minimize breakage if used elsewhere statically,
+    // but the plan is to inject.
+    // Actually, the plan implies we should use the trait.
+    // Let's keep static methods that create a default instance and call the trait method for convenience if needed,
+    // but better to just expose the struct and trait.
+
+    pub fn new() -> Self {
+        Self
+    }
+
+    /// Static helper for cases where DI is not yet used (legacy support)
+    pub fn hash_password(password: &str) -> Result<String> {
+        Self.hash_password(password)
+    }
+
+    /// Static helper for cases where DI is not yet used (legacy support)
+    pub fn verify_password(password: &str, hash: &str) -> Result<bool> {
+        Self.verify_password(password, hash)
     }
 }
 

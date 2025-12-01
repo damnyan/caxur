@@ -1,4 +1,3 @@
-use crate::domain::password::PasswordService;
 use crate::domain::users::{NewUser, User, UserRepository};
 use crate::shared::error::AppError;
 use serde::Deserialize;
@@ -34,13 +33,22 @@ impl CreateUserRequest {
     }
 }
 
+use crate::domain::password::PasswordHashingService;
+
 pub struct CreateUserUseCase {
     repo: Arc<dyn UserRepository>,
+    password_hasher: Arc<dyn PasswordHashingService>,
 }
 
 impl CreateUserUseCase {
-    pub fn new(repo: Arc<dyn UserRepository>) -> Self {
-        Self { repo }
+    pub fn new(
+        repo: Arc<dyn UserRepository>,
+        password_hasher: Arc<dyn PasswordHashingService>,
+    ) -> Self {
+        Self {
+            repo,
+            password_hasher,
+        }
     }
 
     pub async fn execute(&self, req: CreateUserRequest) -> Result<User, AppError> {
@@ -48,7 +56,9 @@ impl CreateUserUseCase {
         req.validate_unique_email(&self.repo).await?;
 
         // Hash the password using Argon2
-        let password_hash = PasswordService::hash_password(&req.password)
+        let password_hash = self
+            .password_hasher
+            .hash_password(&req.password)
             .map_err(|e| AppError::InternalServerError(e))?;
 
         let new_user = NewUser {
@@ -64,12 +74,14 @@ impl CreateUserUseCase {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::domain::password::PasswordService;
     use crate::infrastructure::repositories::mock::MockUserRepository;
 
     #[tokio::test]
     async fn test_create_user() {
         let repo = Arc::new(MockUserRepository::default());
-        let use_case = CreateUserUseCase::new(repo);
+        let hasher = Arc::new(PasswordService::new());
+        let use_case = CreateUserUseCase::new(repo, hasher);
 
         let req = CreateUserRequest {
             username: "testuser".to_string(),
@@ -86,7 +98,8 @@ mod tests {
     #[tokio::test]
     async fn test_create_user_duplicate_email() {
         let repo = Arc::new(MockUserRepository::default());
-        let use_case = CreateUserUseCase::new(repo.clone());
+        let hasher = Arc::new(PasswordService::new());
+        let use_case = CreateUserUseCase::new(repo.clone(), hasher);
 
         // Create first user
         let req1 = CreateUserRequest {

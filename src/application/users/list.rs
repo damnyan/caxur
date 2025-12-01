@@ -158,4 +158,52 @@ mod tests {
         assert_eq!(users.len(), 2);
         assert_eq!(users[0].username, "user2");
     }
+    #[test]
+    fn test_page_params_default() {
+        let params = PageParams::default();
+        assert_eq!(params.number, 1);
+        assert_eq!(params.size, 20);
+        assert!(params.cursor.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_list_users_pagination_limits() {
+        let repo = Arc::new(MockUserRepository::default());
+        let use_case = ListUsersUseCase::new(repo);
+
+        // Test min page size
+        let req = ListUsersRequest {
+            page: PageParams {
+                number: 1,
+                size: 0, // Should be clamped to 1
+                cursor: None,
+            },
+            sort: None,
+        };
+        // We can't easily verify internal clamping without spying on repo or checking result count if we had data.
+        // But we can check that it doesn't panic.
+        let _ = use_case.execute(req).await;
+
+        // Test max page size
+        let req = ListUsersRequest {
+            page: PageParams {
+                number: 1,
+                size: 1000, // Should be clamped to 100
+                cursor: None,
+            },
+            sort: None,
+        };
+        let _ = use_case.execute(req).await;
+
+        // Test min page number
+        let req = ListUsersRequest {
+            page: PageParams {
+                number: 0, // Should be clamped to 1
+                size: 10,
+                cursor: None,
+            },
+            sort: None,
+        };
+        let _ = use_case.execute(req).await;
+    }
 }
