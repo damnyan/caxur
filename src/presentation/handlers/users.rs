@@ -8,12 +8,12 @@ use crate::infrastructure::db::DbPool;
 use crate::infrastructure::repositories::users::PostgresUserRepository;
 use crate::presentation::handlers::auth::AuthUser;
 use crate::shared::error::{AppError, ErrorResponse};
-use crate::shared::response::{JsonApiLinks, JsonApiMeta, JsonApiResource, JsonApiResponse};
+use crate::shared::response::{JsonApiMeta, JsonApiResource, JsonApiResponse};
 use crate::shared::validation::ValidatedJson;
 use axum::{
     Json,
     extract::{Path, Query, State},
-    http::StatusCode,
+    http::{StatusCode, Uri},
     response::IntoResponse,
 };
 use serde::Serialize;
@@ -128,6 +128,7 @@ pub async fn get_user(
 )]
 pub async fn list_users(
     State(pool): State<DbPool>,
+    uri: Uri,
     Query(req): Query<ListUsersRequest>,
     _auth: AuthUser,
 ) -> Result<impl IntoResponse, AppError> {
@@ -152,49 +153,19 @@ pub async fn list_users(
         .collect();
 
     // Calculate pagination metadata
-    let total_pages = (total as f64 / page_size as f64).ceil() as i64;
-
     let meta = JsonApiMeta::new()
         .with_page(page_number)
         .with_per_page(page_size)
         .with_total(total);
 
-    // Generate pagination links
-    let base_url = "/api/v1/users";
-    let mut links = JsonApiLinks::new()
-        .with_self(format!(
-            "{}?page[number]={}&page[size]={}",
-            base_url, page_number, page_size
-        ))
-        .with_first(format!(
-            "{}?page[number]=1&page[size]={}",
-            base_url, page_size
-        ));
-
-    if total_pages > 0 {
-        links = links.with_last(format!(
-            "{}?page[number]={}&page[size]={}",
-            base_url, total_pages, page_size
-        ));
-    }
-
-    if page_number > 1 {
-        links = links.with_prev(format!(
-            "{}?page[number]={}&page[size]={}",
-            base_url,
-            page_number - 1,
-            page_size
-        ));
-    }
-
-    if page_number < total_pages {
-        links = links.with_next(format!(
-            "{}?page[number]={}&page[size]={}",
-            base_url,
-            page_number + 1,
-            page_size
-        ));
-    }
+    // Generate pagination links using the helper
+    let links = crate::shared::pagination::PaginationLinkBuilder::from_uri(
+        &uri,
+        page_number,
+        page_size,
+        total,
+    )
+    .build();
 
     Ok((
         StatusCode::OK,

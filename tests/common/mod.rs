@@ -3,6 +3,7 @@ use std::time::Duration;
 use uuid::Uuid;
 
 /// Setup a test database connection
+#[allow(dead_code)]
 pub async fn setup_test_db() -> PgPool {
     let database_url = std::env::var("TEST_DATABASE_URL")
         .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/caxur_test".to_string());
@@ -26,6 +27,7 @@ pub async fn setup_test_db() -> PgPool {
 }
 
 /// Cleanup test database by truncating all tables
+#[allow(dead_code)]
 pub async fn cleanup_test_db(pool: &PgPool) {
     sqlx::query("TRUNCATE users, refresh_tokens CASCADE")
         .execute(pool)
@@ -35,6 +37,7 @@ pub async fn cleanup_test_db(pool: &PgPool) {
 
 /// Generate a test JWT token for authentication
 /// This uses the same JWT service as the application
+#[allow(dead_code)]
 pub fn generate_test_token(user_id: Uuid) -> String {
     use caxur::domain::auth::AuthService;
     use caxur::infrastructure::auth::JwtAuthService;

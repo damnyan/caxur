@@ -377,3 +377,235 @@ async fn test_delete_user() {
 
     common::cleanup_test_db(&pool).await;
 }
+
+#[tokio::test]
+async fn test_update_user_forbidden() {
+    let pool = common::setup_test_db().await;
+    common::cleanup_test_db(&pool).await;
+
+    let app = caxur::presentation::router::app(pool.clone());
+
+    // Create two users
+    let create_request1 = json!({
+        "username": "user1",
+        "email": "user1@example.com",
+        "password": "password123"
+    });
+
+    let response1 = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/users")
+                .method("POST")
+                .header("content-type", "application/json")
+                .body(Body::from(create_request1.to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    let body1 = axum::body::to_bytes(response1.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let json1: serde_json::Value = serde_json::from_slice(&body1).unwrap();
+    let user1_id = json1["data"]["id"].as_str().unwrap();
+    let user1_uuid = uuid::Uuid::parse_str(user1_id).unwrap();
+
+    let create_request2 = json!({
+        "username": "user2",
+        "email": "user2@example.com",
+        "password": "password123"
+    });
+
+    let response2 = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/users")
+                .method("POST")
+                .header("content-type", "application/json")
+                .body(Body::from(create_request2.to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    let body2 = axum::body::to_bytes(response2.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let json2: serde_json::Value = serde_json::from_slice(&body2).unwrap();
+    let user2_id = json2["data"]["id"].as_str().unwrap();
+
+    // User1 tries to update User2's account (should be forbidden)
+    let token = common::generate_test_token(user1_uuid);
+
+    let update_request = json!({
+        "username": "hacker",
+        "email": "hacker@example.com"
+    });
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri(&format!("/api/v1/users/{}", user2_id))
+                .method("PUT")
+                .header("content-type", "application/json")
+                .header("authorization", format!("Bearer {}", token))
+                .body(Body::from(update_request.to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::FORBIDDEN);
+
+    common::cleanup_test_db(&pool).await;
+}
+
+#[tokio::test]
+async fn test_delete_user_forbidden() {
+    let pool = common::setup_test_db().await;
+    common::cleanup_test_db(&pool).await;
+
+    let app = caxur::presentation::router::app(pool.clone());
+
+    // Create two users
+    let create_request1 = json!({
+        "username": "user1",
+        "email": "user1@example.com",
+        "password": "password123"
+    });
+
+    let response1 = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/users")
+                .method("POST")
+                .header("content-type", "application/json")
+                .body(Body::from(create_request1.to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    let body1 = axum::body::to_bytes(response1.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let json1: serde_json::Value = serde_json::from_slice(&body1).unwrap();
+    let user1_id = json1["data"]["id"].as_str().unwrap();
+    let user1_uuid = uuid::Uuid::parse_str(user1_id).unwrap();
+
+    let create_request2 = json!({
+        "username": "user2",
+        "email": "user2@example.com",
+        "password": "password123"
+    });
+
+    let response2 = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/users")
+                .method("POST")
+                .header("content-type", "application/json")
+                .body(Body::from(create_request2.to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    let body2 = axum::body::to_bytes(response2.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let json2: serde_json::Value = serde_json::from_slice(&body2).unwrap();
+    let user2_id = json2["data"]["id"].as_str().unwrap();
+
+    // User1 tries to delete User2's account (should be forbidden)
+    let token = common::generate_test_token(user1_uuid);
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri(&format!("/api/v1/users/{}", user2_id))
+                .method("DELETE")
+                .header("authorization", format!("Bearer {}", token))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::FORBIDDEN);
+
+    common::cleanup_test_db(&pool).await;
+}
+
+#[tokio::test]
+async fn test_delete_user_not_found() {
+    let pool = common::setup_test_db().await;
+    common::cleanup_test_db(&pool).await;
+
+    let app = caxur::presentation::router::app(pool.clone());
+
+    // Create a user to get a valid token
+    let create_request = json!({
+        "username": "testuser",
+        "email": "test@example.com",
+        "password": "password123"
+    });
+
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/users")
+                .method("POST")
+                .header("content-type", "application/json")
+                .body(Body::from(create_request.to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    let user_id = json["data"]["id"].as_str().unwrap();
+    let user_uuid = uuid::Uuid::parse_str(user_id).unwrap();
+
+    let token = common::generate_test_token(user_uuid);
+
+    // Try to delete with the same user ID (should work, but we're testing the not found path)
+    // First delete succeeds
+    app.clone()
+        .oneshot(
+            Request::builder()
+                .uri(&format!("/api/v1/users/{}", user_id))
+                .method("DELETE")
+                .header("authorization", format!("Bearer {}", token))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    // Second delete should return not found (user already deleted)
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri(&format!("/api/v1/users/{}", user_id))
+                .method("DELETE")
+                .header("authorization", format!("Bearer {}", token))
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::NOT_FOUND);
+
+    common::cleanup_test_db(&pool).await;
+}

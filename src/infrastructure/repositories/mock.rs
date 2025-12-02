@@ -121,4 +121,26 @@ mod tests {
         assert_eq!(users[0].username, "user1");
         assert_eq!(users[1].username, "user2");
     }
+
+    #[tokio::test]
+    async fn test_mock_update_nonexistent_user() {
+        let repo = MockUserRepository::default();
+
+        // Try to update a non-existent user
+        let fake_id = Uuid::new_v4();
+        let result = repo
+            .update(
+                fake_id,
+                UpdateUser {
+                    username: Some("newname".to_string()),
+                    email: None,
+                    password_hash: None,
+                },
+            )
+            .await;
+
+        // Should return an error
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err().to_string(), "User not found");
+    }
 }
