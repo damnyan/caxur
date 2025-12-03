@@ -362,6 +362,282 @@ impl CreateUserRequest {
 // Call in use case before main logic
 ```
 
+## Testing Patterns
+
+### Coverage Requirement
+**Maintain 98%+ code coverage**. Current: 98.97% (578/584 lines)
+
+### Test Structure
+- **Unit Tests**: `#[cfg(test)] mod tests` within each file
+- **Integration Tests**: `tests/` directory with real PostgreSQL
+
+### Unit Test Patterns
+
+**Application Layer** (use MockRepository):
+```rust
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::infrastructure::repositories::mock::MockUserRepository;
+    use std::sync::Arc;
+
+    #[tokio::test]
+    async fn test_create_user_success() {
+        let repo = Arc::new(MockUserRepository::default());
+        let use_case = CreateUserUseCase::new(repo);
+        
+        let request = CreateUserRequest {
+            username: "testuser".to_string(),
+            email: "test@example.com".to_string(),
+            password: "password123".to_string(),
+        };
+        
+        let result = use_case.execute(request).await;
+        assert!(result.is_ok());
+        
+        let user = result.unwrap();
+        assert_eq!(user.username, "testuser");
+        assert_eq!(user.email, "test@example.com");
+    }
+
+    #[tokio::test]
+    async fn test_create_user_validation_error() {
+        let repo = Arc::new(MockUserRepository::default());
+        let use_case = CreateUserUseCase::new(repo);
+        
+        let request = CreateUserRequest {
+            username: "".to_string(),  // Invalid
+            email: "invalid-email".to_string(),  // Invalid
+            password: "123".to_string(),  // Too short
+        };
+        
+        let result = use_case.execute(request).await;
+        assert!(result.is_err());
+    }
+}
+```
+
+**Domain Layer** (pure logic):
+```rust
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_password_hash_and_verify() {
+        let password = "password123";
+        let hash = PasswordService::hash_password(password).unwrap();
+        
+        assert!(PasswordService::verify_password(password, &hash).unwrap());
+        assert!(!PasswordService::verify_password("wrong", &hash).unwrap());
+    }
+
+    #[test]
+    fn test_password_hash_error() {
+        let result = PasswordService::hash_password("");
+        assert!(result.is_err());
+    }
+}
+```
+
+**Shared Layer** (error handling, validation):
+```rust
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_app_error_to_status_code() {
+        assert_eq!(AppError::NotFound("User not found".to_string()).status_code(), StatusCode::NOT_FOUND);
+        assert_eq!(AppError::ValidationError("Invalid email".to_string()).status_code(), StatusCode::UNPROCESSABLE_ENTITY);
+        assert_eq!(AppError::Unauthorized("Invalid token".to_string()).status_code(), StatusCode::UNAUTHORIZED);
+    }
+}
+```
+
+### Integration Test Patterns
+
+**Setup** (`tests/common/mod.rs`):
+```rust
+use sqlx::{PgPool, postgres::PgPoolOptions};
+use std::time::Duration;
+use uuid::Uuid;
+
+#[allow(dead_code)]
+pub async fn setup_test_db() -> PgPool {
+    let database_url = std::env::var("TEST_DATABASE_URL")
+        .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/caxur_test".to_string());
+
+    let pool = PgPoolOptions::new()
+        .max_connections(5)
+        .acquire_timeout(Duration::from_secs(5))
+        .connect(&database_url)
+        .await
+        .expect("Failed to connect to test database");
+
+    sqlx::migrate!().run(&pool).await.expect("Failed to run migrations");
+    pool
+}
+
+#[allow(dead_code)]
+pub async fn cleanup_test_db(pool: &PgPool) {
+    sqlx::query("TRUNCATE users, refresh_tokens CASCADE")
+        .execute(pool)
+        .await
+        .expect("Failed to cleanup test database");
+}
+
+#[allow(dead_code)]
+pub fn generate_test_token(user_id: Uuid) -> String {
+    use caxur::domain::auth::AuthService;
+    use caxur::infrastructure::auth::JwtAuthService;
+
+    let auth_service = JwtAuthService::new(
+        "keys/private_key.pem",
+        "keys/public_key.pem",
+        900,
+        604800,
+    ).expect("Failed to create auth service");
+
+    auth_service.generate_access_token(user_id, "user".to_string())
+        .expect("Failed to generate test token")
+}
+```
+
+**Handler Tests** (`tests/users_test.rs`):
+```rust
+use axum::{body::Body, http::{Request, StatusCode}};
+use serde_json::json;
+use tower::ServiceExt;
+
+mod common;
+
+#[tokio::test]
+async fn test_create_user() {
+    let pool = common::setup_test_db().await;
+    common::cleanup_test_db(&pool).await;
+    
+    let app = caxur::presentation::router::app(pool.clone());
+    
+    let request_body = json!({
+        "username": "testuser",
+        "email": "test@example.com",
+        "password": "password123"
+    });
+    
+    let response = app.oneshot(
+        Request::builder()
+            .uri("/api/v1/users")
+            .method("POST")
+            .header("content-type", "application/json")
+            .body(Body::from(request_body.to_string()))
+            .unwrap(),
+    ).await.unwrap();
+    
+    assert_eq!(response.status(), StatusCode::CREATED);
+    
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX).await.unwrap();
+    let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    
+    assert_eq!(json["data"]["type"], "users");
+    assert_eq!(json["data"]["attributes"]["username"], "testuser");
+    assert_eq!(json["data"]["attributes"]["email"], "test@example.com");
+    
+    common::cleanup_test_db(&pool).await;
+}
+
+#[tokio::test]
+async fn test_update_user_forbidden() {
+    let pool = common::setup_test_db().await;
+    common::cleanup_test_db(&pool).await;
+    
+    // Create two users
+    let app = caxur::presentation::router::app(pool.clone());
+    
+    // Create user 1
+    let user1_response = app.clone().oneshot(
+        Request::builder()
+            .uri("/api/v1/users")
+            .method("POST")
+            .header("content-type", "application/json")
+            .body(Body::from(json!({"username": "user1", "email": "user1@example.com", "password": "password123"}).to_string()))
+            .unwrap(),
+    ).await.unwrap();
+    
+    let user1_body = axum::body::to_bytes(user1_response.into_body(), usize::MAX).await.unwrap();
+    let user1_json: serde_json::Value = serde_json::from_slice(&user1_body).unwrap();
+    let user1_id = user1_json["data"]["id"].as_str().unwrap();
+    
+    // Create user 2 and get their token
+    let user2_response = app.clone().oneshot(
+        Request::builder()
+            .uri("/api/v1/users")
+            .method("POST")
+            .header("content-type", "application/json")
+            .body(Body::from(json!({"username": "user2", "email": "user2@example.com", "password": "password123"}).to_string()))
+            .unwrap(),
+    ).await.unwrap();
+    
+    let user2_body = axum::body::to_bytes(user2_response.into_body(), usize::MAX).await.unwrap();
+    let user2_json: serde_json::Value = serde_json::from_slice(&user2_body).unwrap();
+    let user2_id_uuid = uuid::Uuid::parse_str(user2_json["data"]["id"].as_str().unwrap()).unwrap();
+    let user2_token = common::generate_test_token(user2_id_uuid);
+    
+    // Try to update user1 with user2's token (should be forbidden)
+    let update_response = app.oneshot(
+        Request::builder()
+            .uri(&format!("/api/v1/users/{}", user1_id))
+            .method("PUT")
+            .header("content-type", "application/json")
+            .header("authorization", format!("Bearer {}", user2_token))
+            .body(Body::from(json!({"username": "hacked"}).to_string()))
+            .unwrap(),
+    ).await.unwrap();
+    
+    assert_eq!(update_response.status(), StatusCode::FORBIDDEN);
+    
+    common::cleanup_test_db(&pool).await;
+}
+```
+
+### Test Coverage Rules
+
+1. **100% coverage required** for:
+   - Domain layer (business logic)
+   - Application layer (use cases)
+   - Shared utilities
+   - Infrastructure repositories (via integration tests)
+
+2. **Acceptable uncovered**:
+   - `src/main.rs` entry point (signal handling)
+   - Boilerplate that delegates to tested functions
+
+3. **Run coverage**:
+   ```bash
+   cargo tarpaulin --out Lcov Html
+   ```
+
+4. **Coverage targets**:
+   - Overall: ≥ 98%
+   - Per module: ≥ 95% (except main.rs)
+
+### Test Naming Conventions
+
+- Unit tests: `test_<function>_<scenario>` (e.g., `test_create_user_success`, `test_create_user_validation_error`)
+- Integration tests: `test_<endpoint>_<scenario>` (e.g., `test_create_user`, `test_update_user_forbidden`)
+
+### Test Organization
+
+```
+tests/
+├── common/
+│   └── mod.rs          # Shared test utilities
+├── users_test.rs       # User endpoint tests
+├── auth_test.rs        # Auth endpoint tests
+├── db_test.rs          # Database connection tests
+└── refresh_tokens_test.rs  # Refresh token repository tests
+```
+
 **Password hashing** (see `src/domain/password.rs`):
 
 ```rust
