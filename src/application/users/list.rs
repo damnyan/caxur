@@ -56,6 +56,7 @@ impl ListUsersUseCase {
         Self { repo }
     }
 
+    #[tracing::instrument(skip(self, req))]
     pub async fn execute(&self, req: ListUsersRequest) -> Result<Vec<User>, anyhow::Error> {
         // Enforce reasonable limits
         let per_page = req.page.size.min(100).max(1);

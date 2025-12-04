@@ -9,7 +9,7 @@ use tower::ServiceExt;
 
 #[tokio::test]
 async fn test_create_user() {
-    let pool = common::setup_test_db().await;
+    let pool = setup_test_db_or_skip!();
 
     // Clean up any existing data first
     common::cleanup_test_db(&pool).await;
@@ -52,7 +52,7 @@ async fn test_create_user() {
 
 #[tokio::test]
 async fn test_create_user_duplicate_email() {
-    let pool = common::setup_test_db().await;
+    let pool = setup_test_db_or_skip!();
     let app = caxur::presentation::router::app(pool.clone());
 
     let create_request = json!({
@@ -97,7 +97,7 @@ async fn test_create_user_duplicate_email() {
 
 #[tokio::test]
 async fn test_list_users() {
-    let pool = common::setup_test_db().await;
+    let pool = setup_test_db_or_skip!();
     common::cleanup_test_db(&pool).await;
 
     let app = caxur::presentation::router::app(pool.clone());
@@ -153,7 +153,7 @@ async fn test_list_users() {
 
 #[tokio::test]
 async fn test_get_user() {
-    let pool = common::setup_test_db().await;
+    let pool = setup_test_db_or_skip!();
     common::cleanup_test_db(&pool).await;
 
     let app = caxur::presentation::router::app(pool.clone());
@@ -211,7 +211,7 @@ async fn test_get_user() {
 
 #[tokio::test]
 async fn test_get_nonexistent_user() {
-    let pool = common::setup_test_db().await;
+    let pool = setup_test_db_or_skip!();
     common::cleanup_test_db(&pool).await;
 
     let app = caxur::presentation::router::app(pool.clone());
@@ -266,7 +266,7 @@ async fn test_get_nonexistent_user() {
 
 #[tokio::test]
 async fn test_update_user() {
-    let pool = common::setup_test_db().await;
+    let pool = setup_test_db_or_skip!();
     common::cleanup_test_db(&pool).await;
 
     let app = caxur::presentation::router::app(pool.clone());
@@ -326,7 +326,7 @@ async fn test_update_user() {
 
 #[tokio::test]
 async fn test_delete_user() {
-    let pool = common::setup_test_db().await;
+    let pool = setup_test_db_or_skip!();
     common::cleanup_test_db(&pool).await;
 
     let app = caxur::presentation::router::app(pool.clone());
@@ -380,7 +380,7 @@ async fn test_delete_user() {
 
 #[tokio::test]
 async fn test_update_user_forbidden() {
-    let pool = common::setup_test_db().await;
+    let pool = setup_test_db_or_skip!();
     common::cleanup_test_db(&pool).await;
 
     let app = caxur::presentation::router::app(pool.clone());
@@ -465,7 +465,7 @@ async fn test_update_user_forbidden() {
 
 #[tokio::test]
 async fn test_delete_user_forbidden() {
-    let pool = common::setup_test_db().await;
+    let pool = setup_test_db_or_skip!();
     common::cleanup_test_db(&pool).await;
 
     let app = caxur::presentation::router::app(pool.clone());
@@ -544,7 +544,7 @@ async fn test_delete_user_forbidden() {
 
 #[tokio::test]
 async fn test_delete_user_not_found() {
-    let pool = common::setup_test_db().await;
+    let pool = setup_test_db_or_skip!();
     common::cleanup_test_db(&pool).await;
 
     let app = caxur::presentation::router::app(pool.clone());

@@ -9,7 +9,7 @@ use tower::ServiceExt;
 
 #[tokio::test]
 async fn test_login_success() {
-    let pool = common::setup_test_db().await;
+    let pool = setup_test_db_or_skip!();
     common::cleanup_test_db(&pool).await;
 
     let app = caxur::presentation::router::app(pool.clone());
@@ -68,7 +68,7 @@ async fn test_login_success() {
 
 #[tokio::test]
 async fn test_login_invalid_email() {
-    let pool = common::setup_test_db().await;
+    let pool = setup_test_db_or_skip!();
     common::cleanup_test_db(&pool).await;
 
     let app = caxur::presentation::router::app(pool.clone());
@@ -97,7 +97,7 @@ async fn test_login_invalid_email() {
 
 #[tokio::test]
 async fn test_login_invalid_password() {
-    let pool = common::setup_test_db().await;
+    let pool = setup_test_db_or_skip!();
     common::cleanup_test_db(&pool).await;
 
     let app = caxur::presentation::router::app(pool.clone());
@@ -146,7 +146,7 @@ async fn test_login_invalid_password() {
 
 #[tokio::test]
 async fn test_login_validation_error() {
-    let pool = common::setup_test_db().await;
+    let pool = setup_test_db_or_skip!();
     common::cleanup_test_db(&pool).await;
 
     let app = caxur::presentation::router::app(pool.clone());
@@ -176,7 +176,7 @@ async fn test_login_validation_error() {
 
 #[tokio::test]
 async fn test_refresh_token_success() {
-    let pool = common::setup_test_db().await;
+    let pool = setup_test_db_or_skip!();
     common::cleanup_test_db(&pool).await;
 
     let app = caxur::presentation::router::app(pool.clone());
@@ -257,7 +257,7 @@ async fn test_refresh_token_success() {
 
 #[tokio::test]
 async fn test_refresh_token_invalid() {
-    let pool = common::setup_test_db().await;
+    let pool = setup_test_db_or_skip!();
     common::cleanup_test_db(&pool).await;
 
     let app = caxur::presentation::router::app(pool.clone());
@@ -285,7 +285,7 @@ async fn test_refresh_token_invalid() {
 
 #[tokio::test]
 async fn test_auth_user_extractor_missing_header() {
-    let pool = common::setup_test_db().await;
+    let pool = setup_test_db_or_skip!();
     common::cleanup_test_db(&pool).await;
 
     let app = caxur::presentation::router::app(pool.clone());
@@ -309,7 +309,7 @@ async fn test_auth_user_extractor_missing_header() {
 
 #[tokio::test]
 async fn test_auth_user_extractor_invalid_format() {
-    let pool = common::setup_test_db().await;
+    let pool = setup_test_db_or_skip!();
     common::cleanup_test_db(&pool).await;
 
     let app = caxur::presentation::router::app(pool.clone());
@@ -334,7 +334,7 @@ async fn test_auth_user_extractor_invalid_format() {
 
 #[tokio::test]
 async fn test_auth_user_extractor_invalid_token() {
-    let pool = common::setup_test_db().await;
+    let pool = setup_test_db_or_skip!();
     common::cleanup_test_db(&pool).await;
 
     let app = caxur::presentation::router::app(pool.clone());
@@ -359,7 +359,7 @@ async fn test_auth_user_extractor_invalid_token() {
 
 #[tokio::test]
 async fn test_auth_user_extractor_refresh_token_rejected() {
-    let pool = common::setup_test_db().await;
+    let pool = setup_test_db_or_skip!();
     common::cleanup_test_db(&pool).await;
 
     let app = caxur::presentation::router::app(pool.clone());

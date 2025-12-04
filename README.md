@@ -8,7 +8,12 @@ This boilerplate is built on the following core principles:
 
 -   **Clean Architecture**: Separation of concerns is paramount. The dependency rule is strictly enforced: `Domain` <- `Application` <- `Infrastructure` <- `Presentation`.
 -   **KISS (Keep It Simple, Stupid)**: The structure is modular but avoids unnecessary abstraction overhead. We use simple dependency injection via constructors.
--   **DRY (Don't Repeat Yourself)**: Common logic like validation, error mapping, and response formatting is centralized in the `shared` module.
+-   **DRY (Don't Repeat Yourself)**: Common logic like validation, error mapping, and response formatting is centralized in the `shared` module. This principle is applied throughout:
+    -   **Validation**: Reusable `ValidatedJson` extractor with pre-built validation rules
+    -   **Error Handling**: Centralized `AppError` enum that maps to HTTP status codes
+    -   **Response Formatting**: Consistent JSON:API structure via `ApiResponse` wrapper
+    -   **Pagination**: Shared pagination logic for all list endpoints
+    -   **Authentication**: Reusable `AuthUser` extractor for protected routes
 -   **TDD (Test Driven Development)**: The architecture supports easy unit testing by decoupling business logic from the database and HTTP layer.
 
 ## 📂 Project Structure

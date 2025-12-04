@@ -84,12 +84,14 @@ pub async fn login(
 
     let user_repo = Arc::new(PostgresUserRepository::new(pool.clone()));
     let refresh_token_repo = Arc::new(PostgresRefreshTokenRepository::new(pool));
+    let password_service = Arc::new(crate::domain::password::PasswordService::new());
 
     // Execute use case
     let use_case = LoginUseCase::new(
         user_repo,
         refresh_token_repo,
         auth_service,
+        password_service,
         access_token_expiry,
         refresh_token_expiry,
     );

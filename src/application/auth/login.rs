@@ -18,10 +18,13 @@ pub struct LoginRequest {
 
 pub type LoginResponse = TokenResponse;
 
+use crate::domain::password::PasswordHashingService;
+
 pub struct LoginUseCase {
     user_repo: Arc<dyn UserRepository>,
     refresh_token_repo: Arc<dyn RefreshTokenRepository>,
     auth_service: Arc<dyn AuthService>,
+    password_service: Arc<dyn PasswordHashingService>,
     access_token_expiry: i64,
     refresh_token_expiry: i64,
 }
@@ -31,6 +34,7 @@ impl LoginUseCase {
         user_repo: Arc<dyn UserRepository>,
         refresh_token_repo: Arc<dyn RefreshTokenRepository>,
         auth_service: Arc<dyn AuthService>,
+        password_service: Arc<dyn PasswordHashingService>,
         access_token_expiry: i64,
         refresh_token_expiry: i64,
     ) -> Self {
@@ -38,11 +42,13 @@ impl LoginUseCase {
             user_repo,
             refresh_token_repo,
             auth_service,
+            password_service,
             access_token_expiry,
             refresh_token_expiry,
         }
     }
 
+    #[tracing::instrument(skip(self, req), fields(email = %req.email))]
     pub async fn execute(&self, req: LoginRequest) -> Result<LoginResponse, AppError> {
         // Find user by email
         let user = self
@@ -53,7 +59,9 @@ impl LoginUseCase {
             .ok_or_else(|| AppError::Unauthorized("Invalid email or password".to_string()))?;
 
         // Verify password
-        let is_valid = PasswordService::verify_password(&req.password, &user.password_hash)
+        let is_valid = self
+            .password_service
+            .verify_password(&req.password, &user.password_hash)
             .map_err(|e| AppError::InternalServerError(e))?;
 
         if !is_valid {
@@ -151,6 +159,7 @@ mod tests {
         let user_repo = Arc::new(MockUserRepository::default());
         let refresh_repo = Arc::new(MockRefreshTokenRepository);
         let auth_service = Arc::new(MockAuthService);
+        let password_service = Arc::new(PasswordService::new());
 
         // Create user
         let password = "password123";
@@ -164,7 +173,14 @@ mod tests {
             .await
             .unwrap();
 
-        let use_case = LoginUseCase::new(user_repo, refresh_repo, auth_service, 3600, 7200);
+        let use_case = LoginUseCase::new(
+            user_repo,
+            refresh_repo,
+            auth_service,
+            password_service,
+            3600,
+            7200,
+        );
 
         let req = LoginRequest {
             email: "test@example.com".to_string(),
@@ -182,8 +198,16 @@ mod tests {
         let user_repo = Arc::new(MockUserRepository::default());
         let refresh_repo = Arc::new(MockRefreshTokenRepository);
         let auth_service = Arc::new(MockAuthService);
+        let password_service = Arc::new(PasswordService::new());
 
-        let use_case = LoginUseCase::new(user_repo, refresh_repo, auth_service, 3600, 7200);
+        let use_case = LoginUseCase::new(
+            user_repo,
+            refresh_repo,
+            auth_service,
+            password_service,
+            3600,
+            7200,
+        );
 
         let req = LoginRequest {
             email: "wrong@example.com".to_string(),
@@ -203,6 +227,7 @@ mod tests {
         let user_repo = Arc::new(MockUserRepository::default());
         let refresh_repo = Arc::new(MockRefreshTokenRepository);
         let auth_service = Arc::new(MockAuthService);
+        let password_service = Arc::new(PasswordService::new());
 
         // Create user
         let password = "password123";
@@ -216,7 +241,14 @@ mod tests {
             .await
             .unwrap();
 
-        let use_case = LoginUseCase::new(user_repo, refresh_repo, auth_service, 3600, 7200);
+        let use_case = LoginUseCase::new(
+            user_repo,
+            refresh_repo,
+            auth_service,
+            password_service,
+            3600,
+            7200,
+        );
 
         let req = LoginRequest {
             email: "test@example.com".to_string(),
@@ -228,6 +260,119 @@ mod tests {
         match result.unwrap_err() {
             AppError::Unauthorized(msg) => assert_eq!(msg, "Invalid email or password"),
             _ => panic!("Expected Unauthorized error"),
+        }
+    }
+
+    struct FailingUserRepository;
+
+    #[async_trait]
+    impl UserRepository for FailingUserRepository {
+        async fn create(&self, _new_user: NewUser) -> Result<User, anyhow::Error> {
+            unimplemented!()
+        }
+        async fn find_by_id(&self, _id: Uuid) -> Result<Option<User>, anyhow::Error> {
+            unimplemented!()
+        }
+        async fn find_by_email(&self, _email: &str) -> Result<Option<User>, anyhow::Error> {
+            Err(anyhow::anyhow!("Database error"))
+        }
+        async fn find_all(&self, _limit: i64, _offset: i64) -> Result<Vec<User>, anyhow::Error> {
+            unimplemented!()
+        }
+        async fn count(&self) -> Result<i64, anyhow::Error> {
+            unimplemented!()
+        }
+        async fn update(
+            &self,
+            _id: Uuid,
+            _update: crate::domain::users::UpdateUser,
+        ) -> Result<User, anyhow::Error> {
+            unimplemented!()
+        }
+        async fn delete(&self, _id: Uuid) -> Result<bool, anyhow::Error> {
+            unimplemented!()
+        }
+    }
+
+    #[tokio::test]
+    async fn test_login_db_error() {
+        let user_repo = Arc::new(FailingUserRepository);
+        let refresh_repo = Arc::new(MockRefreshTokenRepository);
+        let auth_service = Arc::new(MockAuthService);
+        let password_service = Arc::new(PasswordService::new());
+
+        let use_case = LoginUseCase::new(
+            user_repo,
+            refresh_repo,
+            auth_service,
+            password_service,
+            3600,
+            7200,
+        );
+
+        let req = LoginRequest {
+            email: "test@example.com".to_string(),
+            password: "password123".to_string(),
+        };
+
+        let result = use_case.execute(req).await;
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            AppError::InternalServerError(e) => assert_eq!(e.to_string(), "Database error"),
+            _ => panic!("Expected InternalServerError"),
+        }
+    }
+
+    struct FailingPasswordService;
+
+    #[async_trait]
+    impl PasswordHashingService for FailingPasswordService {
+        fn hash_password(&self, _password: &str) -> Result<String, anyhow::Error> {
+            Err(anyhow::anyhow!("Hashing error"))
+        }
+        fn verify_password(&self, _password: &str, _hash: &str) -> Result<bool, anyhow::Error> {
+            Err(anyhow::anyhow!("Verification error"))
+        }
+    }
+
+    #[tokio::test]
+    async fn test_login_password_verification_error() {
+        let user_repo = Arc::new(MockUserRepository::default());
+        let refresh_repo = Arc::new(MockRefreshTokenRepository);
+        let auth_service = Arc::new(MockAuthService);
+        let password_service = Arc::new(FailingPasswordService);
+
+        // Create user
+        let password = "password123";
+        let hash = PasswordService::hash_password(password).unwrap();
+        let _user = user_repo
+            .create(NewUser {
+                username: "testuser".to_string(),
+                email: "test@example.com".to_string(),
+                password_hash: hash,
+            })
+            .await
+            .unwrap();
+
+        let use_case = LoginUseCase::new(
+            user_repo,
+            refresh_repo,
+            auth_service,
+            password_service,
+            3600,
+            7200,
+        );
+
+        let req = LoginRequest {
+            email: "test@example.com".to_string(),
+            password: "password123".to_string(),
+        };
+
+        let result = use_case.execute(req).await;
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            AppError::InternalServerError(e) => assert_eq!(e.to_string(), "Verification error"),
+            _ => panic!("Expected InternalServerError"),
         }
     }
 }

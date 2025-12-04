@@ -43,5 +43,7 @@ Thumbs.db
 
 # Test coverage
 tarpaulin-report.html
+tarpaulin-report.json
 cobertura.xml
 lcov.info
+coverage/

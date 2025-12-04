@@ -51,6 +51,7 @@ impl CreateUserUseCase {
         }
     }
 
+    #[tracing::instrument(skip(self, req))]
     pub async fn execute(&self, req: CreateUserRequest) -> Result<User, AppError> {
         // Validate unique email using custom validator
         req.validate_unique_email(&self.repo).await?;
@@ -126,6 +127,38 @@ mod tests {
                 assert_eq!(msg, "Email already exists");
             }
             _ => panic!("Expected ValidationError"),
+        }
+    }
+    struct FailingPasswordService;
+
+    #[async_trait::async_trait]
+    impl crate::domain::password::PasswordHashingService for FailingPasswordService {
+        fn hash_password(&self, _password: &str) -> Result<String, anyhow::Error> {
+            Err(anyhow::anyhow!("Hashing error"))
+        }
+        fn verify_password(&self, _password: &str, _hash: &str) -> Result<bool, anyhow::Error> {
+            Err(anyhow::anyhow!("Verification error"))
+        }
+    }
+
+    #[tokio::test]
+    async fn test_create_user_hash_error() {
+        let repo = Arc::new(MockUserRepository::default());
+        let hasher = Arc::new(FailingPasswordService);
+        let use_case = CreateUserUseCase::new(repo, hasher);
+
+        let req = CreateUserRequest {
+            username: "testuser".to_string(),
+            email: "test@example.com".to_string(),
+            password: "password123".to_string(),
+        };
+
+        let result = use_case.execute(req).await;
+
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            AppError::InternalServerError(e) => assert_eq!(e.to_string(), "Hashing error"),
+            _ => panic!("Expected InternalServerError"),
         }
     }
 }

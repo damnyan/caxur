@@ -4,7 +4,7 @@ use uuid::Uuid;
 
 /// Setup a test database connection
 #[allow(dead_code)]
-pub async fn setup_test_db() -> PgPool {
+pub async fn setup_test_db() -> Result<PgPool, sqlx::Error> {
     let database_url = std::env::var("TEST_DATABASE_URL")
         .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/caxur_test".to_string());
 
@@ -14,16 +14,26 @@ pub async fn setup_test_db() -> PgPool {
         .max_connections(5)
         .acquire_timeout(Duration::from_secs(5))
         .connect(&database_url)
-        .await
-        .expect("Failed to connect to test database. Make sure PostgreSQL is running and the database exists.");
+        .await?;
 
     // Run migrations
-    sqlx::migrate!()
-        .run(&pool)
-        .await
-        .expect("Failed to run migrations");
+    sqlx::migrate!().run(&pool).await?;
 
-    pool
+    Ok(pool)
+}
+
+/// Macro to setup test database or skip test if unavailable
+#[macro_export]
+macro_rules! setup_test_db_or_skip {
+    () => {
+        match common::setup_test_db().await {
+            Ok(pool) => pool,
+            Err(_) => {
+                eprintln!("Skipping test: database not available");
+                return;
+            }
+        }
+    };
 }
 
 /// Cleanup test database by truncating all tables

@@ -1,6 +1,7 @@
 use crate::domain::users::{NewUser, UpdateUser, User, UserRepository};
 use crate::infrastructure::db::DbPool;
 use async_trait::async_trait;
+use futures::stream::Stream;
 use uuid::Uuid;
 
 #[derive(Clone)]
@@ -12,10 +13,58 @@ impl PostgresUserRepository {
     pub fn new(pool: DbPool) -> Self {
         Self { pool }
     }
+
+    /// Batch create multiple users in a single transaction
+    #[tracing::instrument(skip(self, new_users))]
+    pub async fn batch_create(&self, new_users: Vec<NewUser>) -> Result<Vec<User>, anyhow::Error> {
+        let mut tx = self.pool.begin().await?;
+        let mut created_users = Vec::with_capacity(new_users.len());
+
+        for new_user in new_users {
+            let user = sqlx::query_as::<_, User>(
+                r#"
+                INSERT INTO users (username, email, password_hash)
+                VALUES ($1, $2, $3)
+                RETURNING id, username, email, password_hash, created_at, updated_at
+                "#,
+            )
+            .bind(new_user.username)
+            .bind(new_user.email)
+            .bind(new_user.password_hash)
+            .fetch_one(&mut *tx)
+            .await?;
+
+            created_users.push(user);
+        }
+
+        tx.commit().await?;
+        Ok(created_users)
+    }
+
+    /// Stream users for large result sets to avoid loading all into memory
+    #[tracing::instrument(skip(self))]
+    pub fn find_all_stream(
+        &self,
+        limit: i64,
+        offset: i64,
+    ) -> impl Stream<Item = Result<User, sqlx::Error>> + '_ {
+        sqlx::query_as::<_, User>(
+            r#"
+            SELECT id, username, email, password_hash, created_at, updated_at
+            FROM users
+            ORDER BY created_at DESC
+            LIMIT $1 OFFSET $2
+            "#,
+        )
+        .bind(limit)
+        .bind(offset)
+        .fetch(&self.pool)
+    }
 }
 
 #[async_trait]
 impl UserRepository for PostgresUserRepository {
+    #[tracing::instrument(skip(self, new_user))]
     async fn create(&self, new_user: NewUser) -> Result<User, anyhow::Error> {
         // TODO: Switch to sqlx::query_as! macro for compile-time verification once DB is connected
         let user = sqlx::query_as::<_, User>(
@@ -34,6 +83,7 @@ impl UserRepository for PostgresUserRepository {
         Ok(user)
     }
 
+    #[tracing::instrument(skip(self))]
     async fn find_by_id(&self, id: Uuid) -> Result<Option<User>, anyhow::Error> {
         let user = sqlx::query_as::<_, User>(
             r#"
@@ -49,6 +99,7 @@ impl UserRepository for PostgresUserRepository {
         Ok(user)
     }
 
+    #[tracing::instrument(skip(self))]
     async fn find_by_email(&self, email: &str) -> Result<Option<User>, anyhow::Error> {
         let user = sqlx::query_as::<_, User>(
             r#"
@@ -64,6 +115,7 @@ impl UserRepository for PostgresUserRepository {
         Ok(user)
     }
 
+    #[tracing::instrument(skip(self))]
     async fn find_all(&self, limit: i64, offset: i64) -> Result<Vec<User>, anyhow::Error> {
         let users = sqlx::query_as::<_, User>(
             r#"
@@ -81,6 +133,7 @@ impl UserRepository for PostgresUserRepository {
         Ok(users)
     }
 
+    #[tracing::instrument(skip(self))]
     async fn count(&self) -> Result<i64, anyhow::Error> {
         let result: (i64,) = sqlx::query_as(
             r#"
@@ -93,6 +146,7 @@ impl UserRepository for PostgresUserRepository {
         Ok(result.0)
     }
 
+    #[tracing::instrument(skip(self, update))]
     async fn update(&self, id: Uuid, update: UpdateUser) -> Result<User, anyhow::Error> {
         // Build dynamic query based on what fields are being updated
         let mut query = String::from("UPDATE users SET ");
@@ -141,6 +195,7 @@ impl UserRepository for PostgresUserRepository {
         Ok(user)
     }
 
+    #[tracing::instrument(skip(self))]
     async fn delete(&self, id: Uuid) -> Result<bool, anyhow::Error> {
         let result = sqlx::query("DELETE FROM users WHERE id = $1")
             .bind(id)

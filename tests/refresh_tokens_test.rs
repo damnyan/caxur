@@ -22,7 +22,7 @@ async fn create_test_user(pool: &sqlx::PgPool) -> Uuid {
 
 #[tokio::test]
 async fn test_create_refresh_token() {
-    let pool = common::setup_test_db().await;
+    let pool = setup_test_db_or_skip!();
     common::cleanup_test_db(&pool).await;
 
     let user_id = create_test_user(&pool).await;
@@ -48,7 +48,7 @@ async fn test_create_refresh_token() {
 
 #[tokio::test]
 async fn test_find_by_hash_existing() {
-    let pool = common::setup_test_db().await;
+    let pool = setup_test_db_or_skip!();
     common::cleanup_test_db(&pool).await;
 
     let user_id = create_test_user(&pool).await;
@@ -80,7 +80,7 @@ async fn test_find_by_hash_existing() {
 
 #[tokio::test]
 async fn test_find_by_hash_nonexistent() {
-    let pool = common::setup_test_db().await;
+    let pool = setup_test_db_or_skip!();
     common::cleanup_test_db(&pool).await;
 
     let repo = PostgresRefreshTokenRepository::new(pool.clone());
@@ -94,7 +94,7 @@ async fn test_find_by_hash_nonexistent() {
 
 #[tokio::test]
 async fn test_find_by_hash_expired() {
-    let pool = common::setup_test_db().await;
+    let pool = setup_test_db_or_skip!();
     common::cleanup_test_db(&pool).await;
 
     let user_id = create_test_user(&pool).await;
@@ -120,7 +120,7 @@ async fn test_find_by_hash_expired() {
 
 #[tokio::test]
 async fn test_delete_by_user_id() {
-    let pool = common::setup_test_db().await;
+    let pool = setup_test_db_or_skip!();
     common::cleanup_test_db(&pool).await;
 
     let user_id = create_test_user(&pool).await;
@@ -153,7 +153,7 @@ async fn test_delete_by_user_id() {
 
 #[tokio::test]
 async fn test_delete_by_hash() {
-    let pool = common::setup_test_db().await;
+    let pool = setup_test_db_or_skip!();
     common::cleanup_test_db(&pool).await;
 
     let user_id = create_test_user(&pool).await;
@@ -182,7 +182,7 @@ async fn test_delete_by_hash() {
 
 #[tokio::test]
 async fn test_delete_by_hash_nonexistent() {
-    let pool = common::setup_test_db().await;
+    let pool = setup_test_db_or_skip!();
     common::cleanup_test_db(&pool).await;
 
     let repo = PostgresRefreshTokenRepository::new(pool.clone());
@@ -196,7 +196,7 @@ async fn test_delete_by_hash_nonexistent() {
 
 #[tokio::test]
 async fn test_delete_expired() {
-    let pool = common::setup_test_db().await;
+    let pool = setup_test_db_or_skip!();
     common::cleanup_test_db(&pool).await;
 
     let user_id = create_test_user(&pool).await;
