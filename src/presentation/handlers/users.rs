@@ -108,7 +108,7 @@ pub async fn get_user(
                 JsonApiResource::new("users", user.id.to_string(), UserResource::from(user));
             Ok((StatusCode::OK, Json(JsonApiResponse::new(resource))))
         }
-        None => Err(AppError::NotFound),
+        None => Err(AppError::NotFound("User not found".to_string())),
     }
 }
 
@@ -270,6 +270,6 @@ pub async fn delete_user(
             Json(JsonApiResponse::new(json!(null)).with_meta(meta)),
         ))
     } else {
-        Err(AppError::NotFound)
+        Err(AppError::NotFound("User not found".to_string()))
     }
 }

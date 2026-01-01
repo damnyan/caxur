@@ -4,6 +4,7 @@ use caxur::domain::auth::{NewRefreshToken, RefreshTokenRepository};
 use caxur::domain::users::{NewUser, UserRepository};
 use caxur::infrastructure::repositories::refresh_tokens::PostgresRefreshTokenRepository;
 use caxur::infrastructure::repositories::users::PostgresUserRepository;
+use serial_test::serial;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -21,6 +22,7 @@ async fn create_test_user(pool: &sqlx::PgPool) -> Uuid {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_create_refresh_token() {
     let pool = setup_test_db_or_skip!();
     common::cleanup_test_db(&pool).await;
@@ -47,6 +49,7 @@ async fn test_create_refresh_token() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_find_by_hash_existing() {
     let pool = setup_test_db_or_skip!();
     common::cleanup_test_db(&pool).await;
@@ -79,6 +82,7 @@ async fn test_find_by_hash_existing() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_find_by_hash_nonexistent() {
     let pool = setup_test_db_or_skip!();
     common::cleanup_test_db(&pool).await;
@@ -93,6 +97,7 @@ async fn test_find_by_hash_nonexistent() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_find_by_hash_expired() {
     let pool = setup_test_db_or_skip!();
     common::cleanup_test_db(&pool).await;
@@ -119,6 +124,7 @@ async fn test_find_by_hash_expired() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_delete_by_user_id() {
     let pool = setup_test_db_or_skip!();
     common::cleanup_test_db(&pool).await;
@@ -152,6 +158,7 @@ async fn test_delete_by_user_id() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_delete_by_hash() {
     let pool = setup_test_db_or_skip!();
     common::cleanup_test_db(&pool).await;
@@ -181,6 +188,7 @@ async fn test_delete_by_hash() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_delete_by_hash_nonexistent() {
     let pool = setup_test_db_or_skip!();
     common::cleanup_test_db(&pool).await;
@@ -195,6 +203,7 @@ async fn test_delete_by_hash_nonexistent() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_delete_expired() {
     let pool = setup_test_db_or_skip!();
     common::cleanup_test_db(&pool).await;

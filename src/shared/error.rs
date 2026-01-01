@@ -95,14 +95,16 @@ pub enum AppError {
     ValidationError(String),
     #[error("Database error: {0}")]
     DatabaseError(#[from] sqlx::Error),
-    #[error("Not found")]
-    NotFound,
+    #[error("Not found: {0}")]
+    NotFound(String),
     #[error("Conflict: {0}")]
     Conflict(String),
     #[error("Unauthorized: {0}")]
     Unauthorized(String),
     #[error("Forbidden: {0}")]
     Forbidden(String),
+    #[error("Unprocessable Entity: {0}")]
+    UnprocessableEntity(String),
     #[error("Internal server error: {0}")]
     InternalServerError(#[from] anyhow::Error),
 }
@@ -115,6 +117,12 @@ impl IntoResponse for AppError {
                 "Validation Error",
                 msg.clone(),
                 Some("validation_error"),
+            ),
+            AppError::UnprocessableEntity(msg) => (
+                StatusCode::UNPROCESSABLE_ENTITY,
+                "Unprocessable Entity",
+                msg.clone(),
+                Some("unprocessable_entity"),
             ),
             AppError::DatabaseError(e) => {
                 // Check for unique constraint violations
@@ -152,10 +160,10 @@ impl IntoResponse for AppError {
                     Some("database_error"),
                 )
             }
-            AppError::NotFound => (
+            AppError::NotFound(msg) => (
                 StatusCode::NOT_FOUND,
                 "Not Found",
-                "The requested resource was not found".to_string(),
+                msg.clone(),
                 Some("not_found"),
             ),
             AppError::Conflict(msg) => (
@@ -223,7 +231,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_not_found_error_response() {
-        let err = AppError::NotFound;
+        let err = AppError::NotFound("Resource not found".to_string());
         let response = err.into_response();
 
         assert_eq!(response.status(), StatusCode::NOT_FOUND);
@@ -233,11 +241,24 @@ mod tests {
 
         assert_eq!(body_json["errors"][0]["status"], "404");
         assert_eq!(body_json["errors"][0]["title"], "Not Found");
-        assert_eq!(
-            body_json["errors"][0]["detail"],
-            "The requested resource was not found"
-        );
+        assert_eq!(body_json["errors"][0]["detail"], "Resource not found");
         assert_eq!(body_json["errors"][0]["code"], "not_found");
+    }
+
+    #[tokio::test]
+    async fn test_unprocessable_entity_error_response() {
+        let err = AppError::UnprocessableEntity("Cannot process request".to_string());
+        let response = err.into_response();
+
+        assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
+
+        let body_bytes = response.into_body().collect().await.unwrap().to_bytes();
+        let body_json: serde_json::Value = serde_json::from_slice(&body_bytes).unwrap();
+
+        assert_eq!(body_json["errors"][0]["status"], "422");
+        assert_eq!(body_json["errors"][0]["title"], "Unprocessable Entity");
+        assert_eq!(body_json["errors"][0]["detail"], "Cannot process request");
+        assert_eq!(body_json["errors"][0]["code"], "unprocessable_entity");
     }
 
     #[tokio::test]

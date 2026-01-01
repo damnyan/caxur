@@ -5,14 +5,17 @@ use axum::{
     http::{Request, StatusCode},
 };
 use serde_json::json;
+use serial_test::serial;
 use tower::ServiceExt;
 
 #[tokio::test]
+#[serial]
 async fn test_login_success() {
     let pool = setup_test_db_or_skip!();
     common::cleanup_test_db(&pool).await;
 
-    let app = caxur::presentation::router::app(pool.clone());
+    let state = common::create_test_app_state(pool.clone());
+    let app = caxur::presentation::router::app(state);
 
     // First create a user
     let create_request = json!({
@@ -67,11 +70,13 @@ async fn test_login_success() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_login_invalid_email() {
     let pool = setup_test_db_or_skip!();
     common::cleanup_test_db(&pool).await;
 
-    let app = caxur::presentation::router::app(pool.clone());
+    let state = common::create_test_app_state(pool.clone());
+    let app = caxur::presentation::router::app(state);
 
     let login_request = json!({
         "email": "nonexistent@example.com",
@@ -96,11 +101,13 @@ async fn test_login_invalid_email() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_login_invalid_password() {
     let pool = setup_test_db_or_skip!();
     common::cleanup_test_db(&pool).await;
 
-    let app = caxur::presentation::router::app(pool.clone());
+    let state = common::create_test_app_state(pool.clone());
+    let app = caxur::presentation::router::app(state);
 
     // Create a user
     let create_request = json!({
@@ -145,11 +152,13 @@ async fn test_login_invalid_password() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_login_validation_error() {
     let pool = setup_test_db_or_skip!();
     common::cleanup_test_db(&pool).await;
 
-    let app = caxur::presentation::router::app(pool.clone());
+    let state = common::create_test_app_state(pool.clone());
+    let app = caxur::presentation::router::app(state);
 
     // Invalid email format
     let login_request = json!({
@@ -175,11 +184,13 @@ async fn test_login_validation_error() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_refresh_token_success() {
     let pool = setup_test_db_or_skip!();
     common::cleanup_test_db(&pool).await;
 
-    let app = caxur::presentation::router::app(pool.clone());
+    let state = common::create_test_app_state(pool.clone());
+    let app = caxur::presentation::router::app(state);
 
     // Create a user and login
     let create_request = json!({
@@ -256,11 +267,13 @@ async fn test_refresh_token_success() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_refresh_token_invalid() {
     let pool = setup_test_db_or_skip!();
     common::cleanup_test_db(&pool).await;
 
-    let app = caxur::presentation::router::app(pool.clone());
+    let state = common::create_test_app_state(pool.clone());
+    let app = caxur::presentation::router::app(state);
 
     let refresh_request = json!({
         "refresh_token": "invalid.token.here"
@@ -284,11 +297,13 @@ async fn test_refresh_token_invalid() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_auth_user_extractor_missing_header() {
     let pool = setup_test_db_or_skip!();
     common::cleanup_test_db(&pool).await;
 
-    let app = caxur::presentation::router::app(pool.clone());
+    let state = common::create_test_app_state(pool.clone());
+    let app = caxur::presentation::router::app(state);
 
     // Try to access protected endpoint without auth header
     let response = app
@@ -308,11 +323,13 @@ async fn test_auth_user_extractor_missing_header() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_auth_user_extractor_invalid_format() {
     let pool = setup_test_db_or_skip!();
     common::cleanup_test_db(&pool).await;
 
-    let app = caxur::presentation::router::app(pool.clone());
+    let state = common::create_test_app_state(pool.clone());
+    let app = caxur::presentation::router::app(state);
 
     // Try with invalid auth header format (not Bearer)
     let response = app
@@ -333,11 +350,13 @@ async fn test_auth_user_extractor_invalid_format() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_auth_user_extractor_invalid_token() {
     let pool = setup_test_db_or_skip!();
     common::cleanup_test_db(&pool).await;
 
-    let app = caxur::presentation::router::app(pool.clone());
+    let state = common::create_test_app_state(pool.clone());
+    let app = caxur::presentation::router::app(state);
 
     // Try with invalid token
     let response = app
@@ -358,11 +377,13 @@ async fn test_auth_user_extractor_invalid_token() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_auth_user_extractor_refresh_token_rejected() {
     let pool = setup_test_db_or_skip!();
     common::cleanup_test_db(&pool).await;
 
-    let app = caxur::presentation::router::app(pool.clone());
+    let state = common::create_test_app_state(pool.clone());
+    let app = caxur::presentation::router::app(state);
 
     // Create user and login to get tokens
     let create_request = json!({

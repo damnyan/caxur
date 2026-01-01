@@ -57,12 +57,12 @@ impl PasswordService {
 
     /// Static helper for cases where DI is not yet used (legacy support)
     pub fn hash_password(password: &str) -> Result<String> {
-        Self.hash_password(password)
+        Self::new().hash_password(password)
     }
 
     /// Static helper for cases where DI is not yet used (legacy support)
     pub fn verify_password(password: &str, hash: &str) -> Result<bool> {
-        Self.verify_password(password, hash)
+        Self::new().verify_password(password, hash)
     }
 }
 

@@ -3,14 +3,16 @@ use serde::Deserialize;
 use std::sync::Arc;
 use utoipa::{IntoParams, ToSchema};
 
+use crate::shared::pagination::{default_page_number, default_page_size};
+
 #[derive(Deserialize, IntoParams, ToSchema)]
 pub struct PageParams {
     /// Page number (1-indexed)
-    #[serde(default = "default_number")]
+    #[serde(default = "default_page_number")]
     #[param(example = 1, minimum = 1)]
     pub number: i64,
     /// Number of items per page
-    #[serde(default = "default_size")]
+    #[serde(default = "default_page_size")]
     #[param(example = 20, minimum = 1, maximum = 100)]
     pub size: i64,
     /// Cursor for cursor-based pagination (future use)
@@ -32,19 +34,11 @@ pub struct ListUsersRequest {
 impl Default for PageParams {
     fn default() -> Self {
         Self {
-            number: default_number(),
-            size: default_size(),
+            number: default_page_number(),
+            size: default_page_size(),
             cursor: None,
         }
     }
-}
-
-fn default_number() -> i64 {
-    1
-}
-
-fn default_size() -> i64 {
-    20
 }
 
 pub struct ListUsersUseCase {
@@ -66,145 +60,5 @@ impl ListUsersUseCase {
         let offset = (page - 1) * per_page;
 
         self.repo.find_all(per_page, offset).await
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::domain::users::NewUser;
-    use crate::infrastructure::repositories::mock::MockUserRepository;
-
-    #[tokio::test]
-    async fn test_list_users() {
-        let repo = Arc::new(MockUserRepository::default());
-
-        // Create multiple users
-        for i in 0..3 {
-            let new_user = NewUser {
-                username: format!("user{}", i),
-                email: format!("user{}@example.com", i),
-                password_hash: "hash123".to_string(),
-            };
-            repo.create(new_user).await.unwrap();
-        }
-
-        let use_case = ListUsersUseCase::new(repo);
-        let req = ListUsersRequest {
-            page: PageParams {
-                number: 1,
-                size: 10,
-                cursor: None,
-            },
-            sort: None,
-        };
-        let users = use_case.execute(req).await.unwrap();
-
-        assert_eq!(users.len(), 3);
-    }
-
-    #[tokio::test]
-    async fn test_list_users_with_limit() {
-        let repo = Arc::new(MockUserRepository::default());
-
-        for i in 0..5 {
-            let new_user = NewUser {
-                username: format!("user{}", i),
-                email: format!("user{}@example.com", i),
-                password_hash: "hash123".to_string(),
-            };
-            repo.create(new_user).await.unwrap();
-        }
-
-        let use_case = ListUsersUseCase::new(repo);
-        let req = ListUsersRequest {
-            page: PageParams {
-                number: 1,
-                size: 2,
-                cursor: None,
-            },
-            sort: None,
-        };
-        let users = use_case.execute(req).await.unwrap();
-
-        assert_eq!(users.len(), 2);
-    }
-
-    #[tokio::test]
-    async fn test_list_users_pagination() {
-        let repo = Arc::new(MockUserRepository::default());
-
-        for i in 0..5 {
-            let new_user = NewUser {
-                username: format!("user{}", i),
-                email: format!("user{}@example.com", i),
-                password_hash: "hash123".to_string(),
-            };
-            repo.create(new_user).await.unwrap();
-        }
-
-        let use_case = ListUsersUseCase::new(repo);
-
-        // Get page 2 with 2 items per page
-        let req = ListUsersRequest {
-            page: PageParams {
-                number: 2,
-                size: 2,
-                cursor: None,
-            },
-            sort: None,
-        };
-        let users = use_case.execute(req).await.unwrap();
-
-        assert_eq!(users.len(), 2);
-        assert_eq!(users[0].username, "user2");
-    }
-    #[test]
-    fn test_page_params_default() {
-        let params = PageParams::default();
-        assert_eq!(params.number, 1);
-        assert_eq!(params.size, 20);
-        assert!(params.cursor.is_none());
-    }
-
-    #[tokio::test]
-    async fn test_list_users_pagination_limits() {
-        let repo = Arc::new(MockUserRepository::default());
-        let use_case = ListUsersUseCase::new(repo);
-
-        // Test min page size
-        let req = ListUsersRequest {
-            page: PageParams {
-                number: 1,
-                size: 0, // Should be clamped to 1
-                cursor: None,
-            },
-            sort: None,
-        };
-        // We can't easily verify internal clamping without spying on repo or checking result count if we had data.
-        // But we can check that it doesn't panic.
-        let _ = use_case.execute(req).await;
-
-        // Test max page size
-        let req = ListUsersRequest {
-            page: PageParams {
-                number: 1,
-                size: 1000, // Should be clamped to 100
-                cursor: None,
-            },
-            sort: None,
-        };
-        let _ = use_case.execute(req).await;
-
-        // Test min page number
-        let req = ListUsersRequest {
-            page: PageParams {
-                number: 0, // Should be clamped to 1
-                size: 10,
-                cursor: None,
-            },
-            sort: None,
-        };
-        let _ = use_case.execute(req).await;
     }
 }

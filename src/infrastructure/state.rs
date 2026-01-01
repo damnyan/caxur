@@ -14,3 +14,15 @@ impl AppState {
         Self { pool, auth_service }
     }
 }
+
+impl axum::extract::FromRef<AppState> for DbPool {
+    fn from_ref(app_state: &AppState) -> Self {
+        app_state.pool.clone()
+    }
+}
+
+impl axum::extract::FromRef<AppState> for Arc<JwtAuthService> {
+    fn from_ref(app_state: &AppState) -> Self {
+        app_state.auth_service.clone()
+    }
+}

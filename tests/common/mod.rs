@@ -39,28 +39,51 @@ macro_rules! setup_test_db_or_skip {
 /// Cleanup test database by truncating all tables
 #[allow(dead_code)]
 pub async fn cleanup_test_db(pool: &PgPool) {
-    sqlx::query("TRUNCATE users, refresh_tokens CASCADE")
-        .execute(pool)
-        .await
-        .expect("Failed to cleanup test database");
+    sqlx::query(
+        "TRUNCATE users, user_administrators, refresh_tokens, roles, role_permissions CASCADE",
+    )
+    .execute(pool)
+    .await
+    .expect("Failed to cleanup test database");
+}
+
+use caxur::domain::auth::AuthService;
+use caxur::infrastructure::auth::JwtAuthService;
+use caxur::infrastructure::state::AppState;
+use std::sync::Arc;
+
+pub const TEST_PRIVATE_KEY: &str = r#"-----BEGIN PRIVATE KEY-----
+MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgzQ+KuEuDjAghP3/6
+0MFOB3poG08f7EBkLt8h0czpsTShRANCAARJRklwE/Tr/osIALEEgegOxArrgT+L
+MgWB6ZDIj3woV80aVwPjN2TJC1tzRNeIgJxaVPjLlcvel7450+ct8e8o
+-----END PRIVATE KEY-----"#;
+
+pub const TEST_PUBLIC_KEY: &str = r#"-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAESUZJcBP06/6LCACxBIHoDsQK64E/
+izIFgemQyI98KFfNGlcD4zdkyQtbc0TXiICcWlT4y5XL3pe+OdPnLfHvKA==
+-----END PUBLIC KEY-----"#;
+
+pub fn create_test_auth_service() -> Arc<JwtAuthService> {
+    Arc::new(
+        JwtAuthService::new_from_keys(
+            TEST_PRIVATE_KEY.as_bytes(),
+            TEST_PUBLIC_KEY.as_bytes(),
+            900,    // 15 minutes
+            604800, // 7 days
+        )
+        .expect("Failed to create auth service for tests"),
+    )
+}
+
+pub fn create_test_app_state(pool: PgPool) -> AppState {
+    AppState::new(pool, create_test_auth_service())
 }
 
 /// Generate a test JWT token for authentication
-/// This uses the same JWT service as the application
+/// This uses the same JWT service as the application keys
 #[allow(dead_code)]
 pub fn generate_test_token(user_id: Uuid) -> String {
-    use caxur::domain::auth::AuthService;
-    use caxur::infrastructure::auth::JwtAuthService;
-
-    // Use the same keys as the application
-    let auth_service = JwtAuthService::new(
-        "keys/private_key.pem",
-        "keys/public_key.pem",
-        900,    // 15 minutes
-        604800, // 7 days
-    )
-    .expect("Failed to create auth service for tests");
-
+    let auth_service = create_test_auth_service();
     auth_service
         .generate_access_token(user_id, "user".to_string())
         .expect("Failed to generate test token")

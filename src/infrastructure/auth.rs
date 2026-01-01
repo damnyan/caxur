@@ -28,10 +28,25 @@ impl JwtAuthService {
         let public_key_pem = fs::read(public_key_path)
             .map_err(|e| anyhow::anyhow!("Failed to read public key file: {}", e))?;
 
-        let encoding_key = EncodingKey::from_ec_pem(&private_key_pem)
+        Self::new_from_keys(
+            &private_key_pem,
+            &public_key_pem,
+            access_token_expiry,
+            refresh_token_expiry,
+        )
+    }
+
+    /// Create a new JWT service from key content
+    pub fn new_from_keys(
+        private_key_pem: &[u8],
+        public_key_pem: &[u8],
+        access_token_expiry: i64,
+        refresh_token_expiry: i64,
+    ) -> Result<Self> {
+        let encoding_key = EncodingKey::from_ec_pem(private_key_pem)
             .map_err(|e| anyhow::anyhow!("Failed to parse private key: {}", e))?;
 
-        let decoding_key = DecodingKey::from_ec_pem(&public_key_pem)
+        let decoding_key = DecodingKey::from_ec_pem(public_key_pem)
             .map_err(|e| anyhow::anyhow!("Failed to parse public key: {}", e))?;
 
         Ok(Self {

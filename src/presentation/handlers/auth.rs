@@ -1,10 +1,9 @@
 use crate::application::auth::login::{LoginRequest, LoginResponse, LoginUseCase};
 use crate::application::auth::refresh::{RefreshTokenRequest, RefreshTokenUseCase};
 use crate::domain::auth::{AuthService, Claims};
-use crate::infrastructure::auth::JwtAuthService;
-use crate::infrastructure::db::DbPool;
 use crate::infrastructure::repositories::refresh_tokens::PostgresRefreshTokenRepository;
 use crate::infrastructure::repositories::users::PostgresUserRepository;
+use crate::infrastructure::state::AppState;
 use crate::shared::error::{AppError, ErrorResponse};
 use crate::shared::response::{JsonApiResource, JsonApiResponse};
 use crate::shared::validation::ValidatedJson;
@@ -54,14 +53,26 @@ impl From<LoginResponse> for AuthTokenResource {
     tag = "auth"
 )]
 pub async fn login(
-    State(pool): State<DbPool>,
+    State(state): State<AppState>,
     ValidatedJson(req): ValidatedJson<LoginRequest>,
 ) -> Result<impl IntoResponse, AppError> {
-    // Get configuration from environment
-    let private_key_path = std::env::var("JWT_PRIVATE_KEY_PATH")
-        .unwrap_or_else(|_| "keys/private_key.pem".to_string());
-    let public_key_path =
-        std::env::var("JWT_PUBLIC_KEY_PATH").unwrap_or_else(|_| "keys/public_key.pem".to_string());
+    let auth_service = state.auth_service;
+    let pool = state.pool;
+
+    let user_repo = Arc::new(PostgresUserRepository::new(pool.clone()));
+    let refresh_token_repo = Arc::new(PostgresRefreshTokenRepository::new(pool));
+    let password_service = Arc::new(crate::domain::password::PasswordService::new());
+
+    // Execute use case
+    // Note: We need to access expiry times from auth_service or config.
+    // Since JwtAuthService encapsulates expiry, we might need getters or pass them in AppState also?
+    // JwtAuthService has `access_token_expiry` fields but they are private.
+    // Hack for now: Use hardcoded/env defaults or exposing getters.
+    // Ideally AuthService trait should expose this or UseCase should take AuthService that knows it.
+    // But LoginUseCase takes expiry args.
+    // Let's assume we can get them from env still or add getters to JwtAuthService.
+    // For now, I'll keep env var reading for expiry but NOT keys.
+
     let access_token_expiry = std::env::var("JWT_ACCESS_TOKEN_EXPIRY")
         .unwrap_or_else(|_| "900".to_string())
         .parse::<i64>()
@@ -71,22 +82,6 @@ pub async fn login(
         .parse::<i64>()
         .unwrap_or(604800);
 
-    // Initialize services
-    let auth_service = Arc::new(
-        JwtAuthService::new(
-            &private_key_path,
-            &public_key_path,
-            access_token_expiry,
-            refresh_token_expiry,
-        )
-        .map_err(|e| AppError::InternalServerError(e))?,
-    ) as Arc<dyn AuthService>;
-
-    let user_repo = Arc::new(PostgresUserRepository::new(pool.clone()));
-    let refresh_token_repo = Arc::new(PostgresRefreshTokenRepository::new(pool));
-    let password_service = Arc::new(crate::domain::password::PasswordService::new());
-
-    // Execute use case
     let use_case = LoginUseCase::new(
         user_repo,
         refresh_token_repo,
@@ -116,14 +111,9 @@ pub async fn login(
     tag = "auth"
 )]
 pub async fn refresh_token(
-    State(pool): State<DbPool>,
+    State(state): State<AppState>,
     ValidatedJson(req): ValidatedJson<RefreshTokenRequest>,
 ) -> Result<impl IntoResponse, AppError> {
-    // Get configuration from environment
-    let private_key_path = std::env::var("JWT_PRIVATE_KEY_PATH")
-        .unwrap_or_else(|_| "keys/private_key.pem".to_string());
-    let public_key_path =
-        std::env::var("JWT_PUBLIC_KEY_PATH").unwrap_or_else(|_| "keys/public_key.pem".to_string());
     let access_token_expiry = std::env::var("JWT_ACCESS_TOKEN_EXPIRY")
         .unwrap_or_else(|_| "900".to_string())
         .parse::<i64>()
@@ -133,18 +123,8 @@ pub async fn refresh_token(
         .parse::<i64>()
         .unwrap_or(604800);
 
-    // Initialize services
-    let auth_service = Arc::new(
-        JwtAuthService::new(
-            &private_key_path,
-            &public_key_path,
-            access_token_expiry,
-            refresh_token_expiry,
-        )
-        .map_err(|e| AppError::InternalServerError(e))?,
-    ) as Arc<dyn AuthService>;
-
-    let refresh_token_repo = Arc::new(PostgresRefreshTokenRepository::new(pool));
+    let auth_service = state.auth_service;
+    let refresh_token_repo = Arc::new(PostgresRefreshTokenRepository::new(state.pool));
 
     // Execute use case
     let use_case = RefreshTokenUseCase::new(
@@ -167,13 +147,13 @@ pub struct AuthUser {
     pub claims: Claims,
 }
 
-impl<S> FromRequestParts<S> for AuthUser
-where
-    S: Send + Sync,
-{
+impl FromRequestParts<AppState> for AuthUser {
     type Rejection = AppError;
 
-    async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
+    async fn from_request_parts(
+        parts: &mut Parts,
+        state: &AppState,
+    ) -> Result<Self, Self::Rejection> {
         // Extract Authorization header
         let auth_header = parts
             .headers
@@ -191,28 +171,8 @@ where
         // Extract token
         let token = &auth_header[7..];
 
-        // Get configuration from environment
-        let private_key_path = std::env::var("JWT_PRIVATE_KEY_PATH")
-            .unwrap_or_else(|_| "keys/private_key.pem".to_string());
-        let public_key_path = std::env::var("JWT_PUBLIC_KEY_PATH")
-            .unwrap_or_else(|_| "keys/public_key.pem".to_string());
-        let access_token_expiry = std::env::var("JWT_ACCESS_TOKEN_EXPIRY")
-            .unwrap_or_else(|_| "900".to_string())
-            .parse::<i64>()
-            .unwrap_or(900);
-        let refresh_token_expiry = std::env::var("JWT_REFRESH_TOKEN_EXPIRY")
-            .unwrap_or_else(|_| "604800".to_string())
-            .parse::<i64>()
-            .unwrap_or(604800);
-
-        // Initialize auth service
-        let auth_service = JwtAuthService::new(
-            &private_key_path,
-            &public_key_path,
-            access_token_expiry,
-            refresh_token_expiry,
-        )
-        .map_err(|e| AppError::InternalServerError(e))?;
+        // Use injected auth service
+        let auth_service = &state.auth_service;
 
         // Validate token
         let claims = auth_service

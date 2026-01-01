@@ -1,14 +1,18 @@
+#[macro_use]
 mod common;
 
+use caxur::domain::administrators::AdministratorRepository;
 use caxur::domain::auth::AuthService;
 use caxur::domain::users::{NewUser, UserRepository};
 use caxur::infrastructure::auth::JwtAuthService;
 use caxur::infrastructure::repositories::users::PostgresUserRepository;
 use caxur::infrastructure::state::AppState;
 use futures::StreamExt;
+use serial_test::serial;
 use std::sync::Arc;
 
 #[tokio::test]
+#[serial]
 async fn test_postgres_user_repo_batch_create() {
     let pool = setup_test_db_or_skip!();
     common::cleanup_test_db(&pool).await;
@@ -44,6 +48,7 @@ async fn test_postgres_user_repo_batch_create() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_postgres_user_repo_find_all_stream() {
     let pool = setup_test_db_or_skip!();
     common::cleanup_test_db(&pool).await;
@@ -76,6 +81,7 @@ async fn test_postgres_user_repo_find_all_stream() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_app_state_new() {
     // Create temporary key files
     let priv_key_path = "test_priv_key.pem";
@@ -136,6 +142,49 @@ DZwes7rFnIQxkso2oBYr0aYT+CZSRfGyemH2drNe4zwS1IJCKLEF1QpYIA==
     assert!(state.auth_service.validate_token("invalid").is_err());
 
     // Cleanup
-    std::fs::remove_file(priv_key_path).unwrap_or_default();
     std::fs::remove_file(pub_key_path).unwrap_or_default();
+}
+
+#[tokio::test]
+#[serial]
+async fn test_admin_repo_empty_update_non_existent() {
+    let pool = setup_test_db_or_skip!();
+    common::cleanup_test_db(&pool).await;
+
+    let repo =
+        caxur::infrastructure::repositories::administrators::PostgresAdministratorRepository::new(
+            pool.clone(),
+        );
+    let non_existent_id = uuid::Uuid::new_v4();
+    let update = caxur::domain::administrators::UpdateAdministrator {
+        first_name: None,
+        middle_name: None,
+        last_name: None,
+        suffix: None,
+        contact_number: None,
+        email: None,
+        password_hash: None,
+    };
+
+    // This specific case: empty update struct + non-existent ID
+    // should trigger the `ok_or_else(|| anyhow::anyhow!("Administrator not found"))`
+    // at line 153 of src/infrastructure/repositories/administrators.rs
+    let result = repo.update(non_existent_id, update).await;
+
+    assert!(result.is_err());
+    assert_eq!(result.unwrap_err().to_string(), "Administrator not found");
+}
+
+#[tokio::test]
+#[serial]
+async fn test_app_state_from_ref() {
+    let pool = setup_test_db_or_skip!();
+    let state = common::create_test_app_state(pool);
+
+    // Explicitly test the FromRef implementation for Arc<JwtAuthService>
+    // This covers lines 24-28 in src/infrastructure/state.rs
+    let auth_service: Arc<JwtAuthService> = axum::extract::FromRef::from_ref(&state);
+
+    // Check if the pointers are the same, implying it's the exact same Arc
+    assert!(Arc::ptr_eq(&state.auth_service, &auth_service));
 }

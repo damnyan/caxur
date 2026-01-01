@@ -5,16 +5,19 @@ use axum::{
     http::{Request, StatusCode},
 };
 use serde_json::json;
+use serial_test::serial;
 use tower::ServiceExt;
 
 #[tokio::test]
+#[serial]
 async fn test_create_user() {
     let pool = setup_test_db_or_skip!();
 
     // Clean up any existing data first
     common::cleanup_test_db(&pool).await;
 
-    let app = caxur::presentation::router::app(pool.clone());
+    let state = common::create_test_app_state(pool.clone());
+    let app = caxur::presentation::router::app(state);
 
     let create_request = json!({
         "username": "testuser",
@@ -51,9 +54,11 @@ async fn test_create_user() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_create_user_duplicate_email() {
     let pool = setup_test_db_or_skip!();
-    let app = caxur::presentation::router::app(pool.clone());
+    let state = common::create_test_app_state(pool.clone());
+    let app = caxur::presentation::router::app(state);
 
     let create_request = json!({
         "username": "testuser",
@@ -96,11 +101,13 @@ async fn test_create_user_duplicate_email() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_list_users() {
     let pool = setup_test_db_or_skip!();
     common::cleanup_test_db(&pool).await;
 
-    let app = caxur::presentation::router::app(pool.clone());
+    let state = common::create_test_app_state(pool.clone());
+    let app = caxur::presentation::router::app(state);
 
     // Create a user first
     let create_request = json!({
@@ -152,11 +159,13 @@ async fn test_list_users() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_get_user() {
     let pool = setup_test_db_or_skip!();
     common::cleanup_test_db(&pool).await;
 
-    let app = caxur::presentation::router::app(pool.clone());
+    let state = common::create_test_app_state(pool.clone());
+    let app = caxur::presentation::router::app(state);
 
     // Create a user first
     let create_request = json!({
@@ -210,11 +219,13 @@ async fn test_get_user() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_get_nonexistent_user() {
     let pool = setup_test_db_or_skip!();
     common::cleanup_test_db(&pool).await;
 
-    let app = caxur::presentation::router::app(pool.clone());
+    let state = common::create_test_app_state(pool.clone());
+    let app = caxur::presentation::router::app(state);
 
     // Create a user to get a valid token
     let create_request = json!({
@@ -265,11 +276,13 @@ async fn test_get_nonexistent_user() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_update_user() {
     let pool = setup_test_db_or_skip!();
     common::cleanup_test_db(&pool).await;
 
-    let app = caxur::presentation::router::app(pool.clone());
+    let state = common::create_test_app_state(pool.clone());
+    let app = caxur::presentation::router::app(state);
 
     // Create a user first
     let create_request = json!({
@@ -325,11 +338,13 @@ async fn test_update_user() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_delete_user() {
     let pool = setup_test_db_or_skip!();
     common::cleanup_test_db(&pool).await;
 
-    let app = caxur::presentation::router::app(pool.clone());
+    let state = common::create_test_app_state(pool.clone());
+    let app = caxur::presentation::router::app(state);
 
     // Create a user first
     let create_request = json!({
@@ -379,11 +394,13 @@ async fn test_delete_user() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_update_user_forbidden() {
     let pool = setup_test_db_or_skip!();
     common::cleanup_test_db(&pool).await;
 
-    let app = caxur::presentation::router::app(pool.clone());
+    let state = common::create_test_app_state(pool.clone());
+    let app = caxur::presentation::router::app(state);
 
     // Create two users
     let create_request1 = json!({
@@ -464,11 +481,13 @@ async fn test_update_user_forbidden() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_delete_user_forbidden() {
     let pool = setup_test_db_or_skip!();
     common::cleanup_test_db(&pool).await;
 
-    let app = caxur::presentation::router::app(pool.clone());
+    let state = common::create_test_app_state(pool.clone());
+    let app = caxur::presentation::router::app(state);
 
     // Create two users
     let create_request1 = json!({
@@ -543,11 +562,13 @@ async fn test_delete_user_forbidden() {
 }
 
 #[tokio::test]
+#[serial]
 async fn test_delete_user_not_found() {
     let pool = setup_test_db_or_skip!();
     common::cleanup_test_db(&pool).await;
 
-    let app = caxur::presentation::router::app(pool.clone());
+    let state = common::create_test_app_state(pool.clone());
+    let app = caxur::presentation::router::app(state);
 
     // Create a user to get a valid token
     let create_request = json!({

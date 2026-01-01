@@ -55,7 +55,33 @@ async fn bootstrap(
     // Run migrations
     sqlx::migrate!().run(&pool).await?;
 
-    let app = presentation::router::app(pool);
+    // Get configuration from environment
+    let private_key_path = std::env::var("JWT_PRIVATE_KEY_PATH")
+        .unwrap_or_else(|_| "keys/private_key.pem".to_string());
+    let public_key_path =
+        std::env::var("JWT_PUBLIC_KEY_PATH").unwrap_or_else(|_| "keys/public_key.pem".to_string());
+    let access_token_expiry = std::env::var("JWT_ACCESS_TOKEN_EXPIRY")
+        .unwrap_or_else(|_| "900".to_string())
+        .parse::<i64>()
+        .unwrap_or(900);
+    let refresh_token_expiry = std::env::var("JWT_REFRESH_TOKEN_EXPIRY")
+        .unwrap_or_else(|_| "604800".to_string())
+        .parse::<i64>()
+        .unwrap_or(604800);
+
+    // Initialize auth service
+    let auth_service = std::sync::Arc::new(
+        infrastructure::auth::JwtAuthService::new(
+            &private_key_path,
+            &public_key_path,
+            access_token_expiry,
+            refresh_token_expiry,
+        )
+        .map_err(|e| anyhow::anyhow!("Failed to initialize auth service: {}", e))?,
+    );
+
+    let state = infrastructure::state::AppState::new(pool, auth_service);
+    let app = presentation::router::app(state);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
     tracing::debug!("listening on {}", addr);

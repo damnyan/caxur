@@ -1,6 +1,16 @@
 use crate::shared::response::JsonApiLinks;
 use axum::http::Uri;
 
+/// Default page number for pagination
+pub fn default_page_number() -> i64 {
+    1
+}
+
+/// Default items per page for pagination
+pub fn default_page_size() -> i64 {
+    20
+}
+
 /// Pagination link builder that generates JSON:API compliant pagination links
 pub struct PaginationLinkBuilder {
     base_url: String,
@@ -77,6 +87,12 @@ impl PaginationLinkBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_defaults() {
+        assert_eq!(default_page_number(), 1);
+        assert_eq!(default_page_size(), 20);
+    }
 
     #[test]
     fn test_pagination_links_first_page() {

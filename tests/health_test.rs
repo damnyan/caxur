@@ -17,7 +17,8 @@ async fn test_health_endpoint() {
         }
     };
 
-    let app = caxur::presentation::router::app(pool.clone());
+    let state = common::create_test_app_state(pool.clone());
+    let app = caxur::presentation::router::app(state);
 
     let response = app
         .oneshot(
