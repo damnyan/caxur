@@ -1,6 +1,37 @@
-use sqlx::{PgPool, postgres::PgPoolOptions};
+use sqlx::{
+    ConnectOptions, PgPool,
+    postgres::{PgConnectOptions, PgPoolOptions},
+};
+use std::str::FromStr;
 use std::time::Duration;
 use uuid::Uuid;
+
+/// Ensures that the database exists.
+pub async fn ensure_test_database_exists(database_url: &str) -> Result<(), sqlx::Error> {
+    let options = PgConnectOptions::from_str(database_url)?;
+    let database_name = options.get_database().unwrap_or("caxur_test");
+
+    let admin_options = options.clone().database("postgres");
+    let pool = PgPoolOptions::new()
+        .max_connections(1)
+        .connect_with(admin_options)
+        .await?;
+
+    let exists: bool =
+        sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM pg_database WHERE datname = $1)")
+            .bind(database_name)
+            .fetch_one(&pool)
+            .await?;
+
+    if !exists {
+        println!("Database {} does not exist. Creating...", database_name);
+        let query = format!("CREATE DATABASE \"{}\"", database_name);
+        sqlx::query(&query).execute(&pool).await?;
+        println!("Database {} created successfully.", database_name);
+    }
+
+    Ok(())
+}
 
 /// Setup a test database connection
 #[allow(dead_code)]
@@ -9,6 +40,9 @@ pub async fn setup_test_db() -> Result<PgPool, sqlx::Error> {
         .unwrap_or_else(|_| "postgres://postgres:postgres@localhost:5432/caxur_test".to_string());
 
     println!("Connecting to test database: {}", database_url);
+
+    // Ensure database exists
+    ensure_test_database_exists(&database_url).await?;
 
     let pool = PgPoolOptions::new()
         .max_connections(5)

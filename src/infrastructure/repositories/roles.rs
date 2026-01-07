@@ -213,13 +213,54 @@ impl RoleRepository for PostgresRoleRepository {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use super::*;
     use crate::infrastructure::db::create_pool;
+    use sqlx::ConnectOptions;
+    use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
+    use std::str::FromStr;
+
+    /// Ensures that the database exists.
+    pub async fn ensure_test_database_exists(database_url: &str) -> Result<(), sqlx::Error> {
+        let options = PgConnectOptions::from_str(database_url)?;
+        let database_name = options.get_database().unwrap_or("caxur_test");
+
+        // Connect to the default 'postgres' database to check/create the target database
+        let admin_options = options.clone().database("postgres");
+        let pool = PgPoolOptions::new()
+            .max_connections(1)
+            .connect_with(admin_options)
+            .await?;
+
+        // Check if database exists
+        let exists: bool =
+            sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM pg_database WHERE datname = $1)")
+                .bind(database_name)
+                .fetch_one(&pool)
+                .await?;
+
+        if !exists {
+            println!("Database {} does not exist. Creating...", database_name);
+            let query = format!("CREATE DATABASE \"{}\"", database_name);
+            sqlx::query(&query).execute(&pool).await?;
+            println!("Database {} created successfully.", database_name);
+        }
+
+        Ok(())
+    }
 
     async fn setup_test_db() -> DbPool {
         let database_url = std::env::var("TEST_DATABASE_URL").unwrap_or_else(|_| {
             "postgres://postgres:postgres@localhost:5432/caxur_test".to_string()
         });
-        create_pool(&database_url).await.unwrap()
+
+        ensure_test_database_exists(&database_url).await.unwrap();
+
+        let pool = create_pool(&database_url).await.unwrap();
+
+        // Run migrations
+        sqlx::migrate!().run(&pool).await.unwrap();
+
+        pool
     }
 
     #[tokio::test]

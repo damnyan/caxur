@@ -1,4 +1,5 @@
 use crate::presentation::handlers;
+use crate::presentation::middleware;
 use crate::presentation::openapi::ApiDoc;
 use crate::presentation::routes;
 use axum::{Router, routing::get};
@@ -23,5 +24,7 @@ pub fn app(state: AppState) -> Router {
         .nest("/api/v1/admin/permissions", routes::permissions::routes())
         .layer(CompressionLayer::new())
         .layer(TraceLayer::new_for_http())
+        .layer(middleware::cors::cors_layer())
+        .layer(middleware::rate_limit::rate_limit_layer())
         .with_state(state)
 }

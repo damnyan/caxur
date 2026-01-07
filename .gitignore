@@ -47,3 +47,6 @@ tarpaulin-report.json
 cobertura.xml
 lcov.info
 coverage/
+
+#Docker image files
+/postgres_data

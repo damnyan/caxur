@@ -1,10 +1,11 @@
+name: caxur-project
 services:
   app:
     build: .
     ports:
       - "${APP_PORT:-3000}:3000"
     environment:
-      - DATABASE_URL=postgres://postgres:postgres@db:5432/dleaftots
+      - DATABASE_URL=postgres://postgres:postgres@db:5432/caxur
       - RUST_LOG=caxur=debug,tower_http=debug
     depends_on:
       - db
@@ -17,9 +18,9 @@ services:
     environment:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=dleaftots
+      - POSTGRES_DB=caxur
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - ./postgres_data:/var/lib/postgresql/data
     restart: unless-stopped
 
 volumes:
