@@ -10,8 +10,8 @@ use crate::application::administrators::update::{
     UpdateAdministratorRequest, UpdateAdministratorUseCase,
 };
 use crate::domain::administrators::Administrator;
-use crate::domain::password::PasswordService;
 use crate::infrastructure::db::DbPool;
+use crate::infrastructure::password::PasswordService;
 use crate::infrastructure::repositories::administrators::PostgresAdministratorRepository;
 use crate::presentation::handlers::auth::AuthUser;
 use crate::shared::error::{AppError, ErrorResponse};

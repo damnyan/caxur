@@ -11,3 +11,5 @@ This project utilizes the following technologies to build a robust and high-perf
 | **SQL Toolkit** | [SQLx](https://github.com/launchbadge/sqlx) | Async, pure Rust SQL crate featuring compile-time checked queries. |
 | **Documentation** | [utoipa](https://github.com/juhaku/utoipa) | Compile-time generated OpenAPI documentation. |
 | **Validation** | [validator](https://github.com/Keats/validator) | Struct validation crate. |
+| **CORS** | [tower-http](https://github.com/tower-rs/tower-http) | HTTP middleware for CORS support. |
+| **Rate Limiting** | [tower-governor](https://github.com/benwis/tower-governor) | Rate limiting middleware using the Governor algorithm. |

@@ -5,7 +5,6 @@
 - **Clean Architecture**: Adhere strictly to the dependency rule: `Domain` <- `Application` <- `Infrastructure` <- `Presentation`.
 - **KISS**: Keep implementation simple; use dependency injection via constructors; avoid unnecessary abstraction.
 - **DRY**: Centralize common logic (validation, error mapping, response formatting) in the `shared` module.
-- **TDD**: Write tests first; decouple business logic from external concerns to facilitate unit testing.
 
 ## Project Structure & Layers
 1. **Domain** (`src/domain/`): Pure entities and repository interfaces (Traits). No external dependencies.
@@ -13,6 +12,9 @@
 3. **Infrastructure** (`src/infrastructure/`): Database (SQLx), repository implementations. Depends on Domain.
 4. **Presentation** (`src/presentation/`): HTTP handlers, router. Depends on Application.
 5. **Shared** (`src/shared/`): Common utilities used across layers.
+
+## Development Methodology
+- **TDD (Test-Driven Development)**: Write tests first; decouple business logic from external concerns to facilitate unit testing.
 
 ## Implementation Workflow
 When adding a new feature, follow this order:

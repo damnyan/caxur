@@ -61,7 +61,7 @@ pub async fn login(
 
     let user_repo = Arc::new(PostgresUserRepository::new(pool.clone()));
     let refresh_token_repo = Arc::new(PostgresRefreshTokenRepository::new(pool));
-    let password_service = Arc::new(crate::domain::password::PasswordService::new());
+    let password_service = Arc::new(crate::infrastructure::password::PasswordService::new());
 
     // Execute use case
     // Note: We need to access expiry times from auth_service or config.

@@ -1,7 +1,7 @@
 use crate::common;
 use crate::setup_test_db_or_skip;
 use caxur::application::users::create::{CreateUserRequest, CreateUserUseCase};
-use caxur::domain::password::PasswordService;
+use caxur::infrastructure::password::PasswordService;
 use caxur::infrastructure::repositories::users::PostgresUserRepository;
 use serial_test::serial;
 use std::sync::Arc;

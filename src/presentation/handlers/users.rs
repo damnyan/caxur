@@ -48,7 +48,7 @@ impl From<User> for UserResource {
     }
 }
 
-use crate::domain::password::PasswordService;
+use crate::infrastructure::password::PasswordService;
 
 /// Create a new user
 #[utoipa::path(

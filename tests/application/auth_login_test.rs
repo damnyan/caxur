@@ -1,8 +1,9 @@
 use crate::common;
 use crate::setup_test_db_or_skip;
 use caxur::application::auth::login::{LoginRequest, LoginUseCase};
-use caxur::domain::password::{PasswordHashingService, PasswordService};
+use caxur::domain::password::PasswordHashingService;
 use caxur::domain::users::{NewUser, UserRepository};
+use caxur::infrastructure::password::PasswordService;
 use caxur::infrastructure::repositories::refresh_tokens::PostgresRefreshTokenRepository;
 use caxur::infrastructure::repositories::users::PostgresUserRepository;
 use serial_test::serial;
