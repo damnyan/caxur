@@ -134,10 +134,7 @@ pub async fn list_roles(
 
     let roles = use_case.execute(query.per_page, query.page).await?;
 
-    let total = repo
-        .count()
-        .await
-        .map_err(|e| AppError::InternalServerError(e))?;
+    let total = repo.count().await.map_err(AppError::InternalServerError)?;
 
     let resources: Vec<JsonApiResource<RoleResource>> = roles
         .into_iter()

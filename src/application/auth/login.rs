@@ -54,16 +54,16 @@ impl LoginUseCase {
             .user_repo
             .find_by_email(&req.email)
             .await
-            .map_err(|e| AppError::InternalServerError(e))?
-            .ok_or_else(|| AppError::Unauthorized("Invalid email or password".to_string()))?;
+            .map_err(AppError::InternalServerError)?
+            .ok_or(AppError::Unauthorized("Invalid credentials".to_string()))?;
 
         // Verify password
-        let is_valid = self
+        let valid_password = self
             .password_service
             .verify_password(&req.password, &user.password_hash)
-            .map_err(|e| AppError::InternalServerError(e))?;
+            .map_err(AppError::InternalServerError)?;
 
-        if !is_valid {
+        if !valid_password {
             return Err(AppError::Unauthorized(
                 "Invalid email or password".to_string(),
             ));

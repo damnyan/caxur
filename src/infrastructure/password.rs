@@ -15,6 +15,12 @@ impl PasswordService {
     }
 }
 
+impl Default for PasswordService {
+    fn default() -> Self {
+        Self
+    }
+}
+
 #[async_trait::async_trait]
 impl PasswordHashingService for PasswordService {
     /// Hash a plain text password using Argon2
@@ -91,5 +97,13 @@ mod tests {
         // But both should verify correctly
         assert!(service.verify_password(password, &hash1).unwrap());
         assert!(service.verify_password(password, &hash2).unwrap());
+    }
+
+    #[test]
+    fn test_default_implementation() {
+        let service = PasswordService::default();
+        let password = "testpassword123";
+        let hash = service.hash_password(password).unwrap();
+        assert!(service.verify_password(password, &hash).unwrap());
     }
 }

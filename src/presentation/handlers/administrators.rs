@@ -169,7 +169,7 @@ pub async fn list_admins(
     // Get total count for pagination
     let total = crate::domain::administrators::AdministratorRepository::count(&*repo)
         .await
-        .map_err(|e| AppError::InternalServerError(e))?;
+        .map_err(AppError::InternalServerError)?;
 
     let resources: Vec<JsonApiResource<AdministratorResource>> = admins
         .into_iter()

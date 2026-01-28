@@ -14,7 +14,7 @@ async fn test_list_permissions() {
     common::cleanup_test_db(&pool).await;
 
     let state = common::create_test_app_state(pool.clone());
-    let app = caxur::presentation::router::app(state);
+    let app = caxur::presentation::router::app(state).unwrap();
 
     let response = app
         .oneshot(

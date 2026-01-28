@@ -17,7 +17,7 @@ impl DeleteAdministratorUseCase {
             .repo
             .delete(id)
             .await
-            .map_err(|e| AppError::InternalServerError(e))?;
+            .map_err(AppError::InternalServerError)?;
 
         Ok(deleted)
     }

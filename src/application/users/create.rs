@@ -25,9 +25,9 @@ impl CreateUserRequest {
         &self,
         repo: &Arc<dyn UserRepository>,
     ) -> Result<(), AppError> {
-        if let Some(_) = repo.find_by_email(&self.email).await? {
+        if (repo.find_by_email(&self.email).await?).is_some() {
             return Err(AppError::ValidationError(
-                "Email already exists".to_string(),
+                "Email already registered".to_string(),
             ));
         }
         Ok(())
@@ -59,7 +59,7 @@ impl CreateUserUseCase {
         let password_hash = self
             .password_hasher
             .hash_password(&req.password)
-            .map_err(|e| AppError::InternalServerError(e))?;
+            .map_err(AppError::InternalServerError)?;
 
         let new_user = NewUser {
             username: req.username,

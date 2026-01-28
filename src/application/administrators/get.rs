@@ -17,7 +17,7 @@ impl GetAdministratorUseCase {
             .repo
             .find_by_id(id)
             .await
-            .map_err(|e| AppError::InternalServerError(e))?;
+            .map_err(AppError::InternalServerError)?;
 
         Ok(admin)
     }

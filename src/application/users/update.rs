@@ -27,14 +27,14 @@ impl UpdateUserRequest {
         repo: &Arc<dyn UserRepository>,
         current_user_id: Uuid,
     ) -> Result<(), AppError> {
-        if let Some(email) = &self.email {
-            if let Some(existing_user) = repo.find_by_email(email).await? {
-                // Only error if the email belongs to a different user
-                if existing_user.id != current_user_id {
-                    return Err(AppError::ValidationError(
-                        "Email already exists".to_string(),
-                    ));
-                }
+        if let Some(email) = &self.email
+            && let Some(existing_user) = repo.find_by_email(email).await?
+        {
+            // Only error if the email belongs to a different user
+            if existing_user.id != current_user_id {
+                return Err(AppError::ValidationError(
+                    "Email already exists".to_string(),
+                ));
             }
         }
         Ok(())
@@ -72,7 +72,7 @@ impl UpdateUserUseCase {
             Some(
                 self.password_hasher
                     .hash_password(&password)
-                    .map_err(|e| AppError::InternalServerError(e))?,
+                    .map_err(AppError::InternalServerError)?,
             )
         } else {
             None

@@ -17,7 +17,7 @@ async fn test_create_user() {
     common::cleanup_test_db(&pool).await;
 
     let state = common::create_test_app_state(pool.clone());
-    let app = caxur::presentation::router::app(state);
+    let app = caxur::presentation::router::app(state).unwrap();
 
     let create_request = json!({
         "username": "testuser",
@@ -58,7 +58,7 @@ async fn test_create_user() {
 async fn test_create_user_duplicate_email() {
     let pool = setup_test_db_or_skip!();
     let state = common::create_test_app_state(pool.clone());
-    let app = caxur::presentation::router::app(state);
+    let app = caxur::presentation::router::app(state).unwrap();
 
     let create_request = json!({
         "username": "testuser",
@@ -107,7 +107,7 @@ async fn test_list_users() {
     common::cleanup_test_db(&pool).await;
 
     let state = common::create_test_app_state(pool.clone());
-    let app = caxur::presentation::router::app(state);
+    let app = caxur::presentation::router::app(state).unwrap();
 
     // Create a user first
     let create_request = json!({
@@ -165,7 +165,7 @@ async fn test_get_user() {
     common::cleanup_test_db(&pool).await;
 
     let state = common::create_test_app_state(pool.clone());
-    let app = caxur::presentation::router::app(state);
+    let app = caxur::presentation::router::app(state).unwrap();
 
     // Create a user first
     let create_request = json!({
@@ -225,7 +225,7 @@ async fn test_get_nonexistent_user() {
     common::cleanup_test_db(&pool).await;
 
     let state = common::create_test_app_state(pool.clone());
-    let app = caxur::presentation::router::app(state);
+    let app = caxur::presentation::router::app(state).unwrap();
 
     // Create a user to get a valid token
     let create_request = json!({
@@ -282,7 +282,7 @@ async fn test_update_user() {
     common::cleanup_test_db(&pool).await;
 
     let state = common::create_test_app_state(pool.clone());
-    let app = caxur::presentation::router::app(state);
+    let app = caxur::presentation::router::app(state).unwrap();
 
     // Create a user first
     let create_request = json!({
@@ -344,7 +344,7 @@ async fn test_delete_user() {
     common::cleanup_test_db(&pool).await;
 
     let state = common::create_test_app_state(pool.clone());
-    let app = caxur::presentation::router::app(state);
+    let app = caxur::presentation::router::app(state).unwrap();
 
     // Create a user first
     let create_request = json!({
@@ -400,7 +400,7 @@ async fn test_update_user_forbidden() {
     common::cleanup_test_db(&pool).await;
 
     let state = common::create_test_app_state(pool.clone());
-    let app = caxur::presentation::router::app(state);
+    let app = caxur::presentation::router::app(state).unwrap();
 
     // Create two users
     let create_request1 = json!({
@@ -487,7 +487,7 @@ async fn test_delete_user_forbidden() {
     common::cleanup_test_db(&pool).await;
 
     let state = common::create_test_app_state(pool.clone());
-    let app = caxur::presentation::router::app(state);
+    let app = caxur::presentation::router::app(state).unwrap();
 
     // Create two users
     let create_request1 = json!({
@@ -568,7 +568,7 @@ async fn test_delete_user_not_found() {
     common::cleanup_test_db(&pool).await;
 
     let state = common::create_test_app_state(pool.clone());
-    let app = caxur::presentation::router::app(state);
+    let app = caxur::presentation::router::app(state).unwrap();
 
     // Create a user to get a valid token
     let create_request = json!({

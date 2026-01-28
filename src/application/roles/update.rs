@@ -37,14 +37,13 @@ impl UpdateRoleUseCase {
             .ok_or_else(|| AppError::NotFound(format!("Role with id {} not found", id)))?;
 
         // Check for duplicate name if name is being updated
-        if let Some(ref name) = req.name {
-            if let Some(existing) = self.repo.find_by_name(name).await? {
-                if existing.id != id {
-                    return Err(AppError::ValidationError(
-                        "Role name already exists".to_string(),
-                    ));
-                }
-            }
+        if let Some(ref name) = req.name
+            && let Some(existing) = self.repo.find_by_name(name).await?
+            && existing.id != id
+        {
+            return Err(AppError::ValidationError(
+                "Role name already exists".to_string(),
+            ));
         }
 
         let update = UpdateRole {

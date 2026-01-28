@@ -10,8 +10,8 @@ use utoipa_swagger_ui::SwaggerUi;
 
 use crate::infrastructure::state::AppState;
 
-pub fn app(state: AppState) -> Router {
-    Router::new()
+pub fn app(state: AppState) -> anyhow::Result<Router> {
+    Ok(Router::new()
         .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
         .route("/health", get(handlers::health::health_check))
         .nest("/api/v1/auth", routes::auth::routes())
@@ -24,7 +24,7 @@ pub fn app(state: AppState) -> Router {
         .nest("/api/v1/admin/permissions", routes::permissions::routes())
         .layer(CompressionLayer::new())
         .layer(TraceLayer::new_for_http())
-        .layer(middleware::cors::cors_layer())
-        .layer(middleware::rate_limit::rate_limit_layer())
-        .with_state(state)
+        .layer(middleware::cors::cors_layer()?)
+        .layer(middleware::rate_limit::rate_limit_layer()?)
+        .with_state(state))
 }

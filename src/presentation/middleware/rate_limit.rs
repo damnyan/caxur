@@ -26,8 +26,8 @@ impl KeyExtractor for SmartIpKeyExtractor {
     }
 }
 
-pub fn rate_limit_layer() -> GovernorLayer<SmartIpKeyExtractor, NoOpMiddleware<QuantaInstant>, Body>
-{
+pub fn rate_limit_layer()
+-> anyhow::Result<GovernorLayer<SmartIpKeyExtractor, NoOpMiddleware<QuantaInstant>, Body>> {
     let rate_limit = env::var("RATE_LIMIT_PER_MINUTE")
         .unwrap_or_else(|_| "60".to_string())
         .parse::<u64>()
@@ -38,7 +38,7 @@ pub fn rate_limit_layer() -> GovernorLayer<SmartIpKeyExtractor, NoOpMiddleware<Q
 
 pub fn custom_rate_limit_layer(
     requests_per_minute: u64,
-) -> GovernorLayer<SmartIpKeyExtractor, NoOpMiddleware<QuantaInstant>, Body> {
+) -> anyhow::Result<GovernorLayer<SmartIpKeyExtractor, NoOpMiddleware<QuantaInstant>, Body>> {
     let quota_duration_ms = 60_000 / requests_per_minute;
 
     let config = Arc::new(
@@ -47,8 +47,8 @@ pub fn custom_rate_limit_layer(
             .burst_size(requests_per_minute as u32)
             .key_extractor(SmartIpKeyExtractor)
             .finish()
-            .unwrap(),
+            .ok_or_else(|| anyhow::anyhow!("Failed to finish governor config"))?,
     );
 
-    GovernorLayer::new(config)
+    Ok(GovernorLayer::new(config))
 }

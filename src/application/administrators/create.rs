@@ -28,7 +28,7 @@ impl CreateAdministratorRequest {
         &self,
         repo: &Arc<dyn AdministratorRepository>,
     ) -> Result<(), AppError> {
-        if let Some(_) = repo.find_by_email(&self.email).await? {
+        if repo.find_by_email(&self.email).await?.is_some() {
             return Err(AppError::ValidationError(
                 "Email already exists".to_string(),
             ));
@@ -57,13 +57,17 @@ impl CreateAdministratorUseCase {
         &self,
         req: CreateAdministratorRequest,
     ) -> Result<Administrator, AppError> {
-        // Validate unique email using custom validator
-        req.validate_unique_email(&self.repo).await?;
+        // Check if email already exists
+        if self.repo.find_by_email(&req.email).await?.is_some() {
+            return Err(AppError::ValidationError(
+                "Email already registered".to_string(),
+            ));
+        }
 
         let password_hash = self
             .password_service
             .hash_password(&req.password)
-            .map_err(|e| AppError::InternalServerError(e))?;
+            .map_err(AppError::InternalServerError)?;
 
         let new_admin = NewAdministrator {
             first_name: req.first_name,
@@ -79,7 +83,7 @@ impl CreateAdministratorUseCase {
             .repo
             .create(new_admin)
             .await
-            .map_err(|e| AppError::InternalServerError(e))?;
+            .map_err(AppError::InternalServerError)?;
 
         Ok(admin)
     }

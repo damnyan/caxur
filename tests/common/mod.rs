@@ -1,5 +1,5 @@
 use sqlx::{
-    ConnectOptions, PgPool,
+    PgPool,
     postgres::{PgConnectOptions, PgPoolOptions},
 };
 use std::str::FromStr;

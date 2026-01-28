@@ -6,6 +6,8 @@ use std::env;
 use std::net::SocketAddr;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
+use anyhow::Context;
+
 use std::future::Future;
 
 #[tokio::main]
@@ -35,7 +37,7 @@ where
         .with(tracing_subscriber::fmt::layer())
         .try_init();
 
-    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    let database_url = env::var("DATABASE_URL").context("DATABASE_URL must be set")?;
 
     let (listener, app) = bootstrap(&database_url, port).await?;
 
@@ -81,7 +83,7 @@ async fn bootstrap(
     );
 
     let state = infrastructure::state::AppState::new(pool, auth_service);
-    let app = presentation::router::app(state);
+    let app = presentation::router::app(state)?;
 
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
     tracing::debug!("listening on {}", addr);

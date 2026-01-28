@@ -31,15 +31,13 @@ impl UpdateAdministratorRequest {
         repo: &Arc<dyn AdministratorRepository>,
         current_user_id: Uuid,
     ) -> Result<(), AppError> {
-        if let Some(email) = &self.email {
-            if let Some(existing_user) = repo.find_by_email(email).await? {
-                // Only error if the email belongs to a different user
-                if existing_user.id != current_user_id {
-                    return Err(AppError::ValidationError(
-                        "Email already exists".to_string(),
-                    ));
-                }
-            }
+        if let Some(email) = &self.email
+            && let Some(existing_user) = repo.find_by_email(email).await?
+            && existing_user.id != current_user_id
+        {
+            return Err(AppError::ValidationError(
+                "Email already registered".to_string(),
+            ));
         }
         Ok(())
     }
@@ -70,7 +68,7 @@ impl UpdateAdministratorUseCase {
             .repo
             .find_by_id(id)
             .await
-            .map_err(|e| AppError::InternalServerError(e))?;
+            .map_err(AppError::InternalServerError)?;
 
         if existing.is_none() {
             return Err(AppError::NotFound(format!(
@@ -86,7 +84,7 @@ impl UpdateAdministratorUseCase {
             Some(
                 self.password_service
                     .hash_password(&password)
-                    .map_err(|e| AppError::InternalServerError(e))?,
+                    .map_err(AppError::InternalServerError)?,
             )
         } else {
             None
@@ -106,7 +104,7 @@ impl UpdateAdministratorUseCase {
             .repo
             .update(id, update_struct)
             .await
-            .map_err(|e| AppError::InternalServerError(e))?;
+            .map_err(AppError::InternalServerError)?;
 
         Ok(admin)
     }

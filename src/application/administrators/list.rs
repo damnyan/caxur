@@ -56,7 +56,7 @@ impl ListAdministratorsUseCase {
         req: ListAdministratorsRequest,
     ) -> Result<Vec<Administrator>, AppError> {
         // Enforce reasonable limits
-        let per_page = req.page.size.min(100).max(1);
+        let per_page = req.page.size.clamp(1, 100);
         let page = req.page.number.max(1);
 
         // Calculate offset from page number (page is 1-indexed)
@@ -66,7 +66,7 @@ impl ListAdministratorsUseCase {
             .repo
             .find_all(per_page, offset)
             .await
-            .map_err(|e| AppError::InternalServerError(e))?;
+            .map_err(AppError::InternalServerError)?;
 
         Ok(admins)
     }

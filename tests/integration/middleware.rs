@@ -26,7 +26,7 @@ async fn test_cors_middleware() {
     };
 
     let state = common::create_test_app_state(pool.clone());
-    let app = caxur::presentation::router::app(state);
+    let app = caxur::presentation::router::app(state).unwrap();
 
     // Test Preflight
     let response = app
@@ -72,7 +72,7 @@ async fn test_rate_limit_middleware() {
     };
 
     let state = common::create_test_app_state(pool.clone());
-    let app = caxur::presentation::router::app(state);
+    let app = caxur::presentation::router::app(state).unwrap();
 
     let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 12345);
 
@@ -136,7 +136,7 @@ async fn test_cors_middleware_wildcard() {
     common::cleanup_test_db(&pool).await;
 
     let state = common::create_test_app_state(pool.clone());
-    let app = caxur::presentation::router::app(state);
+    let app = caxur::presentation::router::app(state).unwrap();
 
     // Test Preflight
     let response = app
@@ -179,7 +179,7 @@ async fn test_cors_middleware_default() {
     common::cleanup_test_db(&pool).await;
 
     let state = common::create_test_app_state(pool.clone());
-    let app = caxur::presentation::router::app(state);
+    let app = caxur::presentation::router::app(state).unwrap();
 
     // Test Preflight
     let response = app

@@ -142,10 +142,7 @@ pub async fn list_users(
     let users = use_case.execute(req).await?;
 
     // Get total count for pagination
-    let total = repo
-        .count()
-        .await
-        .map_err(|e| AppError::InternalServerError(e))?;
+    let total = repo.count().await.map_err(AppError::InternalServerError)?;
 
     let resources: Vec<JsonApiResource<UserResource>> = users
         .into_iter()
@@ -207,7 +204,7 @@ pub async fn update_user(
     let auth_user_id = auth
         .claims
         .user_id()
-        .map_err(|e| AppError::InternalServerError(e))?;
+        .map_err(AppError::InternalServerError)?;
     if auth_user_id != id {
         return Err(AppError::Forbidden(
             "You can only update your own account".to_string(),
@@ -251,7 +248,7 @@ pub async fn delete_user(
     let auth_user_id = auth
         .claims
         .user_id()
-        .map_err(|e| AppError::InternalServerError(e))?;
+        .map_err(AppError::InternalServerError)?;
     if auth_user_id != id {
         return Err(AppError::Forbidden(
             "You can only delete your own account".to_string(),

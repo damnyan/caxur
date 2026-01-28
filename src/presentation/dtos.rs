@@ -19,9 +19,9 @@ impl From<Permission> for PermissionDto {
     }
 }
 
-impl Into<Permission> for PermissionDto {
-    fn into(self) -> Permission {
-        match self {
+impl From<PermissionDto> for Permission {
+    fn from(val: PermissionDto) -> Self {
+        match val {
             PermissionDto::AdministratorManagement => Permission::AdministratorManagement,
             PermissionDto::RoleManagement => Permission::RoleManagement,
         }

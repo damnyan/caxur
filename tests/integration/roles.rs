@@ -17,7 +17,7 @@ async fn test_create_role() {
     common::cleanup_test_db(&pool).await;
 
     let state = common::create_test_app_state(pool.clone());
-    let app = caxur::presentation::router::app(state);
+    let app = caxur::presentation::router::app(state).unwrap();
 
     let create_request = json!({
         "name": "Test Role",
@@ -61,7 +61,7 @@ async fn test_get_role() {
     common::cleanup_test_db(&pool).await;
 
     let state = common::create_test_app_state(pool.clone());
-    let app = caxur::presentation::router::app(state);
+    let app = caxur::presentation::router::app(state).unwrap();
 
     // Create a role first
     let create_request = json!({
@@ -112,7 +112,7 @@ async fn test_get_role_not_found() {
     common::cleanup_test_db(&pool).await;
 
     let state = common::create_test_app_state(pool.clone());
-    let app = caxur::presentation::router::app(state);
+    let app = caxur::presentation::router::app(state).unwrap();
 
     let response = app
         .oneshot(
@@ -137,7 +137,7 @@ async fn test_list_roles() {
     common::cleanup_test_db(&pool).await;
 
     let state = common::create_test_app_state(pool.clone());
-    let app = caxur::presentation::router::app(state);
+    let app = caxur::presentation::router::app(state).unwrap();
 
     // Create a role
     let create_request = json!({
@@ -194,7 +194,7 @@ async fn test_update_role() {
     common::cleanup_test_db(&pool).await;
 
     let state = common::create_test_app_state(pool.clone());
-    let app = caxur::presentation::router::app(state);
+    let app = caxur::presentation::router::app(state).unwrap();
 
     // Create a role
     let create_request = json!({
@@ -261,7 +261,7 @@ async fn test_delete_role() {
     common::cleanup_test_db(&pool).await;
 
     let state = common::create_test_app_state(pool.clone());
-    let app = caxur::presentation::router::app(state);
+    let app = caxur::presentation::router::app(state).unwrap();
 
     // Create a role
     let create_request = json!({
@@ -320,7 +320,7 @@ async fn test_role_permissions() {
     common::cleanup_test_db(&pool).await;
 
     let state = common::create_test_app_state(pool.clone());
-    let app = caxur::presentation::router::app(state);
+    let app = caxur::presentation::router::app(state).unwrap();
 
     // Create a role
     let create_request = json!({

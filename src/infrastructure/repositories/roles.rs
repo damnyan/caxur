@@ -215,9 +215,8 @@ impl RoleRepository for PostgresRoleRepository {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use super::*;
     use crate::infrastructure::db::create_pool;
-    use sqlx::ConnectOptions;
+
     use sqlx::postgres::{PgConnectOptions, PgPoolOptions};
     use std::str::FromStr;
 

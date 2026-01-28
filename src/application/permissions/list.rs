@@ -10,6 +10,7 @@ pub struct PermissionResponse {
     pub description: String,
 }
 
+#[derive(Default)]
 pub struct ListPermissionsUseCase;
 
 impl ListPermissionsUseCase {

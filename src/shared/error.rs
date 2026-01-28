@@ -126,31 +126,31 @@ impl IntoResponse for AppError {
             ),
             AppError::DatabaseError(e) => {
                 // Check for unique constraint violations
-                if let Some(db_err) = e.as_database_error() {
-                    if db_err.is_unique_violation() {
-                        let msg = if db_err.message().contains("username") {
-                            "Username already exists"
-                        } else if db_err.message().contains("email") {
-                            "Email already exists"
-                        } else {
-                            "Resource already exists"
-                        };
+                if let Some(db_err) = e.as_database_error()
+                    && db_err.is_unique_violation()
+                {
+                    let msg = if db_err.message().contains("username") {
+                        "Username already exists"
+                    } else if db_err.message().contains("email") {
+                        "Email already exists"
+                    } else {
+                        "Resource already exists"
+                    };
 
-                        let error = JsonApiError::new(
-                            StatusCode::UNPROCESSABLE_ENTITY,
-                            "Unique Constraint Violation",
-                            msg,
-                        )
-                        .with_code("unique_violation");
+                    let error = JsonApiError::new(
+                        StatusCode::UNPROCESSABLE_ENTITY,
+                        "Unique Constraint Violation",
+                        msg,
+                    )
+                    .with_code("unique_violation");
 
-                        return (
-                            StatusCode::UNPROCESSABLE_ENTITY,
-                            Json(ErrorResponse {
-                                errors: vec![error],
-                            }),
-                        )
-                            .into_response();
-                    }
+                    return (
+                        StatusCode::UNPROCESSABLE_ENTITY,
+                        Json(ErrorResponse {
+                            errors: vec![error],
+                        }),
+                    )
+                        .into_response();
                 }
                 tracing::error!("Database error: {:?}", e);
                 (

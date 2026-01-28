@@ -58,15 +58,13 @@ impl RefreshTokenUseCase {
             .refresh_token_repo
             .find_by_hash(&token_hash)
             .await
-            .map_err(|e| AppError::InternalServerError(e))?
+            .map_err(AppError::InternalServerError)?
             .ok_or_else(|| {
                 AppError::Unauthorized("Refresh token not found or expired".to_string())
             })?;
 
         // Parse user ID from claims
-        let user_id = claims
-            .user_id()
-            .map_err(|e| AppError::InternalServerError(e))?;
+        let user_id = claims.user_id().map_err(AppError::InternalServerError)?;
 
         // Verify user_id matches
         if stored_token.user_id != user_id {
@@ -77,7 +75,7 @@ impl RefreshTokenUseCase {
         self.refresh_token_repo
             .delete_by_hash(&token_hash)
             .await
-            .map_err(|e| AppError::InternalServerError(e))?;
+            .map_err(AppError::InternalServerError)?;
 
         // Generate and store new token pair (preserve user_type)
         generate_and_store_tokens(

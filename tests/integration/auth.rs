@@ -15,7 +15,7 @@ async fn test_login_success() {
     common::cleanup_test_db(&pool).await;
 
     let state = common::create_test_app_state(pool.clone());
-    let app = caxur::presentation::router::app(state);
+    let app = caxur::presentation::router::app(state).unwrap();
 
     // First create a user
     let create_request = json!({
@@ -76,7 +76,7 @@ async fn test_login_invalid_email() {
     common::cleanup_test_db(&pool).await;
 
     let state = common::create_test_app_state(pool.clone());
-    let app = caxur::presentation::router::app(state);
+    let app = caxur::presentation::router::app(state).unwrap();
 
     let login_request = json!({
         "email": "nonexistent@example.com",
@@ -107,7 +107,7 @@ async fn test_login_invalid_password() {
     common::cleanup_test_db(&pool).await;
 
     let state = common::create_test_app_state(pool.clone());
-    let app = caxur::presentation::router::app(state);
+    let app = caxur::presentation::router::app(state).unwrap();
 
     // Create a user
     let create_request = json!({
@@ -158,7 +158,7 @@ async fn test_login_validation_error() {
     common::cleanup_test_db(&pool).await;
 
     let state = common::create_test_app_state(pool.clone());
-    let app = caxur::presentation::router::app(state);
+    let app = caxur::presentation::router::app(state).unwrap();
 
     // Invalid email format
     let login_request = json!({
@@ -190,7 +190,7 @@ async fn test_refresh_token_success() {
     common::cleanup_test_db(&pool).await;
 
     let state = common::create_test_app_state(pool.clone());
-    let app = caxur::presentation::router::app(state);
+    let app = caxur::presentation::router::app(state).unwrap();
 
     // Create a user and login
     let create_request = json!({
@@ -273,7 +273,7 @@ async fn test_refresh_token_invalid() {
     common::cleanup_test_db(&pool).await;
 
     let state = common::create_test_app_state(pool.clone());
-    let app = caxur::presentation::router::app(state);
+    let app = caxur::presentation::router::app(state).unwrap();
 
     let refresh_request = json!({
         "refresh_token": "invalid.token.here"
@@ -303,7 +303,7 @@ async fn test_auth_user_extractor_missing_header() {
     common::cleanup_test_db(&pool).await;
 
     let state = common::create_test_app_state(pool.clone());
-    let app = caxur::presentation::router::app(state);
+    let app = caxur::presentation::router::app(state).unwrap();
 
     // Try to access protected endpoint without auth header
     let response = app
@@ -329,7 +329,7 @@ async fn test_auth_user_extractor_invalid_format() {
     common::cleanup_test_db(&pool).await;
 
     let state = common::create_test_app_state(pool.clone());
-    let app = caxur::presentation::router::app(state);
+    let app = caxur::presentation::router::app(state).unwrap();
 
     // Try with invalid auth header format (not Bearer)
     let response = app
@@ -356,7 +356,7 @@ async fn test_auth_user_extractor_invalid_token() {
     common::cleanup_test_db(&pool).await;
 
     let state = common::create_test_app_state(pool.clone());
-    let app = caxur::presentation::router::app(state);
+    let app = caxur::presentation::router::app(state).unwrap();
 
     // Try with invalid token
     let response = app
@@ -383,7 +383,7 @@ async fn test_auth_user_extractor_refresh_token_rejected() {
     common::cleanup_test_db(&pool).await;
 
     let state = common::create_test_app_state(pool.clone());
-    let app = caxur::presentation::router::app(state);
+    let app = caxur::presentation::router::app(state).unwrap();
 
     // Create user and login to get tokens
     let create_request = json!({

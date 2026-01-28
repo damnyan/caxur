@@ -53,7 +53,7 @@ impl ListUsersUseCase {
     #[tracing::instrument(skip(self, req))]
     pub async fn execute(&self, req: ListUsersRequest) -> Result<Vec<User>, anyhow::Error> {
         // Enforce reasonable limits
-        let per_page = req.page.size.min(100).max(1);
+        let per_page = req.page.size.clamp(1, 100);
         let page = req.page.number.max(1);
 
         // Calculate offset from page number (page is 1-indexed)

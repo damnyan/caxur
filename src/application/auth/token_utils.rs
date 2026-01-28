@@ -34,12 +34,12 @@ pub async fn generate_and_store_tokens(
     // Generate access token
     let access_token = auth_service
         .generate_access_token(user_id, user_type.clone())
-        .map_err(|e| AppError::InternalServerError(e))?;
+        .map_err(AppError::InternalServerError)?;
 
     // Generate refresh token
     let refresh_token = auth_service
         .generate_refresh_token(user_id, user_type.clone())
-        .map_err(|e| AppError::InternalServerError(e))?;
+        .map_err(AppError::InternalServerError)?;
 
     // Hash refresh token for storage
     let token_hash = hash_token(&refresh_token);
@@ -58,7 +58,7 @@ pub async fn generate_and_store_tokens(
     refresh_token_repo
         .create(new_refresh_token)
         .await
-        .map_err(|e| AppError::InternalServerError(e))?;
+        .map_err(AppError::InternalServerError)?;
 
     Ok(TokenResponse {
         access_token,
