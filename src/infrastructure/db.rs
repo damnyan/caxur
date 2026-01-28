@@ -3,6 +3,8 @@ use sqlx::{Pool, Postgres};
 use std::env;
 use std::time::Duration;
 
+pub mod models;
+
 pub type DbPool = Pool<Postgres>;
 
 pub async fn create_pool(database_url: &str) -> Result<DbPool, sqlx::Error> {

@@ -1,4 +1,4 @@
-mod common;
+use crate::common;
 
 use caxur::domain::auth::{NewRefreshToken, RefreshTokenRepository};
 use caxur::domain::users::{NewUser, UserRepository};

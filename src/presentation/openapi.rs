@@ -1,18 +1,17 @@
 #[allow(unused_imports)]
 use crate::application::auth::login::{LoginRequest, LoginResponse};
 use crate::application::auth::refresh::{RefreshTokenRequest, RefreshTokenResponse};
-use crate::application::roles::attach_permission::AttachPermissionRequest;
 use crate::application::roles::create::CreateRoleRequest;
 use crate::application::roles::update::UpdateRoleRequest;
 use crate::application::users::create::CreateUserRequest;
 use crate::application::users::list::ListUsersRequest;
 use crate::application::users::update::UpdateUserRequest;
-use crate::domain::permissions::Permission;
-use crate::domain::roles::Role;
-use crate::domain::users::User;
+use crate::presentation::dtos::PermissionDto;
 use crate::presentation::handlers::auth::AuthTokenResource;
 use crate::presentation::handlers::permissions::PermissionResource;
-use crate::presentation::handlers::roles::{DetachPermissionRequest, ListRolesQuery, RoleResource};
+use crate::presentation::handlers::roles::{
+    AttachPermissionRequest, DetachPermissionRequest, ListRolesQuery, RoleResource,
+};
 use crate::presentation::handlers::users::UserResource;
 use crate::shared::error::{ErrorResponse, JsonApiError, JsonApiErrorSource};
 use crate::shared::response::{JsonApiLinks, JsonApiMeta, JsonApiResource, JsonApiResponse};
@@ -49,10 +48,8 @@ use utoipa::OpenApi;
     ),
     components(
         schemas(
-            // Domain models
-            User,
-            Role,
-            Permission,
+            // Domain models removed (using Resources/DTOs)
+            PermissionDto,
 
             // Request DTOs
             CreateUserRequest,
@@ -84,7 +81,7 @@ use utoipa::OpenApi;
             JsonApiResponse<JsonApiResource<RoleResource>>,
             JsonApiResponse<Vec<JsonApiResource<RoleResource>>>,
             JsonApiResponse<Vec<JsonApiResource<PermissionResource>>>,
-            JsonApiResponse<Vec<Permission>>,
+            JsonApiResponse<Vec<PermissionDto>>,
             JsonApiResponse<JsonApiResource<AuthTokenResource>>,
             JsonApiResponse<serde_json::Value>,
 

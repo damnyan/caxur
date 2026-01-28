@@ -1,6 +1,7 @@
 use crate::domain::permissions::Permission;
 use crate::domain::roles::{NewRole, Role, RoleRepository, UpdateRole};
 use crate::infrastructure::db::DbPool;
+use crate::infrastructure::db::models::roles::RoleDbModel;
 use async_trait::async_trait;
 use uuid::Uuid;
 
@@ -19,7 +20,7 @@ impl PostgresRoleRepository {
 impl RoleRepository for PostgresRoleRepository {
     #[tracing::instrument(skip(self, new_role))]
     async fn create(&self, new_role: NewRole) -> Result<Role, anyhow::Error> {
-        let role = sqlx::query_as::<_, Role>(
+        let role_db = sqlx::query_as::<_, RoleDbModel>(
             r#"
             INSERT INTO roles (name, description)
             VALUES ($1, $2)
@@ -31,12 +32,12 @@ impl RoleRepository for PostgresRoleRepository {
         .fetch_one(&self.pool)
         .await?;
 
-        Ok(role)
+        Ok(role_db.into())
     }
 
     #[tracing::instrument(skip(self))]
     async fn find_by_id(&self, id: Uuid) -> Result<Option<Role>, anyhow::Error> {
-        let role = sqlx::query_as::<_, Role>(
+        let role_db = sqlx::query_as::<_, RoleDbModel>(
             r#"
             SELECT id, name, description, created_at, updated_at
             FROM roles
@@ -47,12 +48,12 @@ impl RoleRepository for PostgresRoleRepository {
         .fetch_optional(&self.pool)
         .await?;
 
-        Ok(role)
+        Ok(role_db.map(|r| r.into()))
     }
 
     #[tracing::instrument(skip(self))]
     async fn find_by_name(&self, name: &str) -> Result<Option<Role>, anyhow::Error> {
-        let role = sqlx::query_as::<_, Role>(
+        let role_db = sqlx::query_as::<_, RoleDbModel>(
             r#"
             SELECT id, name, description, created_at, updated_at
             FROM roles
@@ -63,12 +64,12 @@ impl RoleRepository for PostgresRoleRepository {
         .fetch_optional(&self.pool)
         .await?;
 
-        Ok(role)
+        Ok(role_db.map(|r| r.into()))
     }
 
     #[tracing::instrument(skip(self))]
     async fn find_all(&self, limit: i64, offset: i64) -> Result<Vec<Role>, anyhow::Error> {
-        let roles = sqlx::query_as::<_, Role>(
+        let roles_db = sqlx::query_as::<_, RoleDbModel>(
             r#"
             SELECT id, name, description, created_at, updated_at
             FROM roles
@@ -81,6 +82,7 @@ impl RoleRepository for PostgresRoleRepository {
         .fetch_all(&self.pool)
         .await?;
 
+        let roles = roles_db.into_iter().map(|r| r.into()).collect();
         Ok(roles)
     }
 
@@ -124,7 +126,7 @@ impl RoleRepository for PostgresRoleRepository {
             param_count
         ));
 
-        let mut query_builder = sqlx::query_as::<_, Role>(&query);
+        let mut query_builder = sqlx::query_as::<_, RoleDbModel>(&query);
 
         if let Some(name) = update.name {
             query_builder = query_builder.bind(name);
@@ -134,9 +136,9 @@ impl RoleRepository for PostgresRoleRepository {
         }
         query_builder = query_builder.bind(id);
 
-        let role = query_builder.fetch_one(&self.pool).await?;
+        let role_db = query_builder.fetch_one(&self.pool).await?;
 
-        Ok(role)
+        Ok(role_db.into())
     }
 
     #[tracing::instrument(skip(self))]

@@ -1,6 +1,8 @@
 use crate::domain::users::{NewUser, UpdateUser, User, UserRepository};
 use crate::infrastructure::db::DbPool;
+use crate::infrastructure::db::models::users::UserDbModel;
 use async_trait::async_trait;
+use futures::StreamExt;
 use futures::stream::Stream;
 use uuid::Uuid;
 
@@ -21,7 +23,7 @@ impl PostgresUserRepository {
         let mut created_users = Vec::with_capacity(new_users.len());
 
         for new_user in new_users {
-            let user = sqlx::query_as::<_, User>(
+            let user_db = sqlx::query_as::<_, UserDbModel>(
                 r#"
                 INSERT INTO users (username, email, password_hash)
                 VALUES ($1, $2, $3)
@@ -34,7 +36,7 @@ impl PostgresUserRepository {
             .fetch_one(&mut *tx)
             .await?;
 
-            created_users.push(user);
+            created_users.push(user_db.into());
         }
 
         tx.commit().await?;
@@ -48,7 +50,7 @@ impl PostgresUserRepository {
         limit: i64,
         offset: i64,
     ) -> impl Stream<Item = Result<User, sqlx::Error>> + '_ {
-        sqlx::query_as::<_, User>(
+        sqlx::query_as::<_, UserDbModel>(
             r#"
             SELECT id, username, email, password_hash, created_at, updated_at
             FROM users
@@ -59,6 +61,7 @@ impl PostgresUserRepository {
         .bind(limit)
         .bind(offset)
         .fetch(&self.pool)
+        .map(|res| res.map(|db_model| db_model.into()))
     }
 }
 
@@ -67,7 +70,7 @@ impl UserRepository for PostgresUserRepository {
     #[tracing::instrument(skip(self, new_user))]
     async fn create(&self, new_user: NewUser) -> Result<User, anyhow::Error> {
         // TODO: Switch to sqlx::query_as! macro for compile-time verification once DB is connected
-        let user = sqlx::query_as::<_, User>(
+        let user_db = sqlx::query_as::<_, UserDbModel>(
             r#"
             INSERT INTO users (username, email, password_hash)
             VALUES ($1, $2, $3)
@@ -80,12 +83,12 @@ impl UserRepository for PostgresUserRepository {
         .fetch_one(&self.pool)
         .await?;
 
-        Ok(user)
+        Ok(user_db.into())
     }
 
     #[tracing::instrument(skip(self))]
     async fn find_by_id(&self, id: Uuid) -> Result<Option<User>, anyhow::Error> {
-        let user = sqlx::query_as::<_, User>(
+        let user_db = sqlx::query_as::<_, UserDbModel>(
             r#"
             SELECT id, username, email, password_hash, created_at, updated_at
             FROM users
@@ -96,12 +99,12 @@ impl UserRepository for PostgresUserRepository {
         .fetch_optional(&self.pool)
         .await?;
 
-        Ok(user)
+        Ok(user_db.map(|u| u.into()))
     }
 
     #[tracing::instrument(skip(self))]
     async fn find_by_email(&self, email: &str) -> Result<Option<User>, anyhow::Error> {
-        let user = sqlx::query_as::<_, User>(
+        let user_db = sqlx::query_as::<_, UserDbModel>(
             r#"
             SELECT id, username, email, password_hash, created_at, updated_at
             FROM users
@@ -112,12 +115,12 @@ impl UserRepository for PostgresUserRepository {
         .fetch_optional(&self.pool)
         .await?;
 
-        Ok(user)
+        Ok(user_db.map(|u| u.into()))
     }
 
     #[tracing::instrument(skip(self))]
     async fn find_all(&self, limit: i64, offset: i64) -> Result<Vec<User>, anyhow::Error> {
-        let users = sqlx::query_as::<_, User>(
+        let users_db = sqlx::query_as::<_, UserDbModel>(
             r#"
             SELECT id, username, email, password_hash, created_at, updated_at
             FROM users
@@ -130,6 +133,7 @@ impl UserRepository for PostgresUserRepository {
         .fetch_all(&self.pool)
         .await?;
 
+        let users = users_db.into_iter().map(|u| u.into()).collect();
         Ok(users)
     }
 
@@ -177,7 +181,7 @@ impl UserRepository for PostgresUserRepository {
             param_count
         ));
 
-        let mut query_builder = sqlx::query_as::<_, User>(&query);
+        let mut query_builder = sqlx::query_as::<_, UserDbModel>(&query);
 
         if let Some(username) = update.username {
             query_builder = query_builder.bind(username);
@@ -190,9 +194,9 @@ impl UserRepository for PostgresUserRepository {
         }
         query_builder = query_builder.bind(id);
 
-        let user = query_builder.fetch_one(&self.pool).await?;
+        let user_db = query_builder.fetch_one(&self.pool).await?;
 
-        Ok(user)
+        Ok(user_db.into())
     }
 
     #[tracing::instrument(skip(self))]

@@ -1,6 +1,4 @@
-use crate::application::roles::attach_permission::{
-    AttachPermissionRequest, AttachPermissionUseCase,
-};
+use crate::application::roles::attach_permission::AttachPermissionUseCase;
 use crate::application::roles::create::{CreateRoleRequest, CreateRoleUseCase};
 use crate::application::roles::delete::DeleteRoleUseCase;
 use crate::application::roles::detach_permission::DetachPermissionUseCase;
@@ -12,6 +10,7 @@ use crate::domain::permissions::Permission;
 use crate::domain::roles::{Role, RoleRepository};
 use crate::infrastructure::db::DbPool;
 use crate::infrastructure::repositories::roles::PostgresRoleRepository;
+use crate::presentation::dtos::PermissionDto;
 use crate::shared::error::{AppError, ErrorResponse};
 use crate::shared::response::{JsonApiMeta, JsonApiResource, JsonApiResponse};
 use crate::shared::validation::ValidatedJson;
@@ -248,7 +247,8 @@ pub async fn attach_permission(
     let repo = Arc::new(PostgresRoleRepository::new(pool));
     let use_case = AttachPermissionUseCase::new(repo);
 
-    use_case.execute(id, req.permissions).await?;
+    let permissions: Vec<Permission> = req.permissions.into_iter().map(|p| p.into()).collect();
+    use_case.execute(id, permissions).await?;
 
     let meta = JsonApiMeta::new().with_extra(json!({ "attached": true }));
     Ok((
@@ -279,7 +279,8 @@ pub async fn detach_permission(
     let repo = Arc::new(PostgresRoleRepository::new(pool));
     let use_case = DetachPermissionUseCase::new(repo);
 
-    use_case.execute(id, req.permissions).await?;
+    let permissions: Vec<Permission> = req.permissions.into_iter().map(|p| p.into()).collect();
+    use_case.execute(id, permissions).await?;
 
     let meta = JsonApiMeta::new().with_extra(json!({ "detached": true }));
     Ok((
@@ -289,9 +290,15 @@ pub async fn detach_permission(
 }
 
 #[derive(Deserialize, ToSchema)]
+pub struct AttachPermissionRequest {
+    #[schema(example = json!(["administrator_management"]))]
+    pub permissions: Vec<PermissionDto>,
+}
+
+#[derive(Deserialize, ToSchema)]
 pub struct DetachPermissionRequest {
     #[schema(example = json!(["administrator_management"]))]
-    pub permissions: Vec<Permission>,
+    pub permissions: Vec<PermissionDto>,
 }
 
 /// Get all permissions for a role
@@ -302,7 +309,7 @@ pub struct DetachPermissionRequest {
         ("id" = Uuid, Path, description = "Role ID")
     ),
     responses(
-        (status = 200, description = "List of permissions", body = JsonApiResponse<Vec<Permission>>),
+        (status = 200, description = "List of permissions", body = JsonApiResponse<Vec<PermissionDto>>),
         (status = 404, description = "Role not found", body = ErrorResponse)
     ),
     tag = "roles"
@@ -315,6 +322,8 @@ pub async fn get_role_permissions(
     let use_case = GetRolePermissionsUseCase::new(repo);
 
     let permissions = use_case.execute(id).await?;
+
+    let permissions: Vec<PermissionDto> = permissions.into_iter().map(|p| p.into()).collect();
 
     Ok((StatusCode::OK, Json(JsonApiResponse::new(permissions))))
 }

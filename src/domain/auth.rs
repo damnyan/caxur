@@ -1,12 +1,11 @@
 use anyhow::Result;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use sqlx::FromRow;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 /// JWT Claims structure
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
     /// Subject (user ID)
     pub sub: String,
@@ -50,7 +49,7 @@ impl Claims {
 }
 
 /// Refresh token entity
-#[derive(Debug, Clone, FromRow)]
+#[derive(Debug, Clone)]
 pub struct RefreshToken {
     pub id: Uuid,
     pub user_id: Uuid,

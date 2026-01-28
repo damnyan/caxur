@@ -1,3 +1,7 @@
+#[path = "../common/mod.rs"]
+#[macro_use]
+pub mod common;
+
 pub mod auth_login_test;
 pub mod auth_refresh_test;
 pub mod roles_create_test;

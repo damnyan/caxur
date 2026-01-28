@@ -1,16 +1,8 @@
 use crate::domain::permissions::Permission;
 use crate::domain::roles::RoleRepository;
 use crate::shared::error::AppError;
-use serde::Deserialize;
 use std::sync::Arc;
-use utoipa::ToSchema;
 use uuid::Uuid;
-
-#[derive(Deserialize, ToSchema)]
-pub struct AttachPermissionRequest {
-    #[schema(example = json!(["administrator_management", "role_management"]))]
-    pub permissions: Vec<Permission>,
-}
 
 pub struct AttachPermissionUseCase {
     repo: Arc<dyn RoleRepository>,

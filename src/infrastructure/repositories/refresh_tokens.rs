@@ -1,5 +1,6 @@
 use crate::domain::auth::{NewRefreshToken, RefreshToken, RefreshTokenRepository};
 use crate::infrastructure::db::DbPool;
+use crate::infrastructure::db::models::auth::RefreshTokenDbModel;
 use anyhow::Result;
 use async_trait::async_trait;
 use sqlx;
@@ -18,7 +19,7 @@ impl PostgresRefreshTokenRepository {
 #[async_trait]
 impl RefreshTokenRepository for PostgresRefreshTokenRepository {
     async fn create(&self, token: NewRefreshToken) -> Result<RefreshToken> {
-        let refresh_token = sqlx::query_as::<_, RefreshToken>(
+        let token_db = sqlx::query_as::<_, RefreshTokenDbModel>(
             r#"
             INSERT INTO refresh_tokens (user_id, user_type, token_hash, expires_at)
             VALUES ($1, $2, $3, $4)
@@ -32,11 +33,11 @@ impl RefreshTokenRepository for PostgresRefreshTokenRepository {
         .fetch_one(&self.pool)
         .await?;
 
-        Ok(refresh_token)
+        Ok(token_db.into())
     }
 
     async fn find_by_hash(&self, token_hash: &str) -> Result<Option<RefreshToken>> {
-        let refresh_token = sqlx::query_as::<_, RefreshToken>(
+        let token_db = sqlx::query_as::<_, RefreshTokenDbModel>(
             r#"
             SELECT id, user_id, user_type, token_hash, expires_at, created_at
             FROM refresh_tokens
@@ -47,7 +48,7 @@ impl RefreshTokenRepository for PostgresRefreshTokenRepository {
         .fetch_optional(&self.pool)
         .await?;
 
-        Ok(refresh_token)
+        Ok(token_db.map(|t| t.into()))
     }
 
     async fn delete_by_user_id(&self, user_id: Uuid) -> Result<u64> {

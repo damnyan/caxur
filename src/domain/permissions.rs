@@ -1,11 +1,10 @@
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::str::FromStr;
-use utoipa::ToSchema;
 
 /// Pre-defined permissions for RBAC system
 /// These permissions control access to various resources and operations
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Permission {
     #[serde(rename = "administrator_management")]
     AdministratorManagement,

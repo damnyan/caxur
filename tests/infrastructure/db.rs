@@ -1,5 +1,3 @@
-mod common;
-
 use caxur::infrastructure::db;
 
 #[tokio::test]

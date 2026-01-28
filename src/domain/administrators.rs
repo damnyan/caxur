@@ -1,11 +1,9 @@
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use sqlx::FromRow;
 use time::OffsetDateTime;
-use utoipa::ToSchema;
 use uuid::Uuid;
 
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow, ToSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Administrator {
     pub id: Uuid,
     pub first_name: String,
@@ -15,17 +13,14 @@ pub struct Administrator {
     pub contact_number: Option<String>,
     pub email: String,
     #[serde(skip)]
-    #[schema(ignore)]
     pub password_hash: String,
     #[serde(with = "time::serde::iso8601")]
-    #[schema(value_type = String, example = "2025-12-06T15:00:00Z")]
     pub created_at: OffsetDateTime,
     #[serde(with = "time::serde::iso8601")]
-    #[schema(value_type = String, example = "2025-12-06T15:00:00Z")]
     pub updated_at: OffsetDateTime,
 }
 
-#[derive(Debug, Clone, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct NewAdministrator {
     pub first_name: String,
     pub middle_name: Option<String>,
@@ -36,7 +31,7 @@ pub struct NewAdministrator {
     pub password_hash: String,
 }
 
-#[derive(Debug, Clone, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct UpdateAdministrator {
     pub first_name: Option<String>,
     pub middle_name: Option<String>,

@@ -1,31 +1,28 @@
 use super::permissions::Permission;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use sqlx::FromRow;
 use time::OffsetDateTime;
-use utoipa::ToSchema;
 use uuid::Uuid;
+// ToSchema removed
 
-#[derive(Debug, Clone, Serialize, Deserialize, FromRow, ToSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Role {
     pub id: Uuid,
     pub name: String,
     pub description: Option<String>,
     #[serde(with = "time::serde::iso8601")]
-    #[schema(value_type = String, example = "2025-12-06T15:00:00Z")]
     pub created_at: OffsetDateTime,
     #[serde(with = "time::serde::iso8601")]
-    #[schema(value_type = String, example = "2025-12-06T15:00:00Z")]
     pub updated_at: OffsetDateTime,
 }
 
-#[derive(Debug, Clone, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct NewRole {
     pub name: String,
     pub description: Option<String>,
 }
 
-#[derive(Debug, Clone, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Deserialize)]
 pub struct UpdateRole {
     pub name: Option<String>,
     pub description: Option<String>,

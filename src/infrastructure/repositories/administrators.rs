@@ -2,6 +2,7 @@ use crate::domain::administrators::{
     Administrator, AdministratorRepository, NewAdministrator, UpdateAdministrator,
 };
 use crate::infrastructure::db::DbPool;
+use crate::infrastructure::db::models::administrators::AdministratorDbModel;
 use async_trait::async_trait;
 use uuid::Uuid;
 
@@ -20,7 +21,7 @@ impl PostgresAdministratorRepository {
 impl AdministratorRepository for PostgresAdministratorRepository {
     #[tracing::instrument(skip(self, new_admin))]
     async fn create(&self, new_admin: NewAdministrator) -> Result<Administrator, anyhow::Error> {
-        let admin = sqlx::query_as::<_, Administrator>(
+        let admin_db = sqlx::query_as::<_, AdministratorDbModel>(
             r#"
             INSERT INTO user_administrators (
                 first_name, middle_name, last_name, suffix, contact_number, email, password_hash
@@ -39,12 +40,12 @@ impl AdministratorRepository for PostgresAdministratorRepository {
         .fetch_one(&self.pool)
         .await?;
 
-        Ok(admin)
+        Ok(admin_db.into())
     }
 
     #[tracing::instrument(skip(self))]
     async fn find_by_id(&self, id: Uuid) -> Result<Option<Administrator>, anyhow::Error> {
-        let admin = sqlx::query_as::<_, Administrator>(
+        let admin_db = sqlx::query_as::<_, AdministratorDbModel>(
             r#"
             SELECT id, first_name, middle_name, last_name, suffix, contact_number, email, password_hash, created_at, updated_at
             FROM user_administrators
@@ -55,12 +56,12 @@ impl AdministratorRepository for PostgresAdministratorRepository {
         .fetch_optional(&self.pool)
         .await?;
 
-        Ok(admin)
+        Ok(admin_db.map(|a| a.into()))
     }
 
     #[tracing::instrument(skip(self))]
     async fn find_by_email(&self, email: &str) -> Result<Option<Administrator>, anyhow::Error> {
-        let admin = sqlx::query_as::<_, Administrator>(
+        let admin_db = sqlx::query_as::<_, AdministratorDbModel>(
             r#"
             SELECT id, first_name, middle_name, last_name, suffix, contact_number, email, password_hash, created_at, updated_at
             FROM user_administrators
@@ -71,12 +72,12 @@ impl AdministratorRepository for PostgresAdministratorRepository {
         .fetch_optional(&self.pool)
         .await?;
 
-        Ok(admin)
+        Ok(admin_db.map(|a| a.into()))
     }
 
     #[tracing::instrument(skip(self))]
     async fn find_all(&self, limit: i64, offset: i64) -> Result<Vec<Administrator>, anyhow::Error> {
-        let admins = sqlx::query_as::<_, Administrator>(
+        let admins_db = sqlx::query_as::<_, AdministratorDbModel>(
             r#"
             SELECT id, first_name, middle_name, last_name, suffix, contact_number, email, password_hash, created_at, updated_at
             FROM user_administrators
@@ -89,6 +90,7 @@ impl AdministratorRepository for PostgresAdministratorRepository {
         .fetch_all(&self.pool)
         .await?;
 
+        let admins = admins_db.into_iter().map(|a| a.into()).collect();
         Ok(admins)
     }
 
@@ -160,7 +162,7 @@ impl AdministratorRepository for PostgresAdministratorRepository {
             param_count
         ));
 
-        let mut query_builder = sqlx::query_as::<_, Administrator>(&query);
+        let mut query_builder = sqlx::query_as::<_, AdministratorDbModel>(&query);
 
         if let Some(first_name) = update.first_name {
             query_builder = query_builder.bind(first_name);
@@ -185,9 +187,9 @@ impl AdministratorRepository for PostgresAdministratorRepository {
         }
         query_builder = query_builder.bind(id);
 
-        let admin = query_builder.fetch_one(&self.pool).await?;
+        let admin_db = query_builder.fetch_one(&self.pool).await?;
 
-        Ok(admin)
+        Ok(admin_db.into())
     }
 
     #[tracing::instrument(skip(self))]
