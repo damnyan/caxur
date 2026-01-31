@@ -22,6 +22,8 @@ async fn test_update_role_success() {
     let new_role = caxur::domain::roles::NewRole {
         name: format!("role_{}", prefix),
         description: Some("Original description".to_string()),
+        scope: "ADMINISTRATOR".to_string(),
+        group_id: None,
     };
     let role = repo.create(new_role).await.expect("Failed to create role");
 
@@ -82,6 +84,8 @@ async fn test_update_role_name_conflict() {
         .create(caxur::domain::roles::NewRole {
             name: format!("role1_{}", prefix),
             description: None,
+            scope: "ADMINISTRATOR".to_string(),
+            group_id: None,
         })
         .await
         .unwrap();
@@ -91,6 +95,8 @@ async fn test_update_role_name_conflict() {
         .create(caxur::domain::roles::NewRole {
             name: format!("role2_{}", prefix),
             description: None,
+            scope: "ADMINISTRATOR".to_string(),
+            group_id: None,
         })
         .await
         .unwrap();

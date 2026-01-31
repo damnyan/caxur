@@ -10,6 +10,8 @@ pub struct Role {
     pub id: Uuid,
     pub name: String,
     pub description: Option<String>,
+    pub scope: String,
+    pub group_id: Option<Uuid>,
     #[serde(with = "time::serde::iso8601")]
     pub created_at: OffsetDateTime,
     #[serde(with = "time::serde::iso8601")]
@@ -20,6 +22,8 @@ pub struct Role {
 pub struct NewRole {
     pub name: String,
     pub description: Option<String>,
+    pub scope: String,
+    pub group_id: Option<Uuid>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -32,8 +36,19 @@ pub struct UpdateRole {
 pub trait RoleRepository: Send + Sync {
     async fn create(&self, new_role: NewRole) -> Result<Role, anyhow::Error>;
     async fn find_by_id(&self, id: Uuid) -> Result<Option<Role>, anyhow::Error>;
-    async fn find_by_name(&self, name: &str) -> Result<Option<Role>, anyhow::Error>;
-    async fn find_all(&self, limit: i64, offset: i64) -> Result<Vec<Role>, anyhow::Error>;
+    async fn find_by_name(
+        &self,
+        name: &str,
+        scope: &str,
+        group_id: Option<Uuid>,
+    ) -> Result<Option<Role>, anyhow::Error>;
+    async fn find_all(
+        &self,
+        scope: &str,
+        group_id: Option<Uuid>,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<Role>, anyhow::Error>;
     async fn count(&self) -> Result<i64, anyhow::Error>;
     async fn update(&self, id: Uuid, update: UpdateRole) -> Result<Role, anyhow::Error>;
     async fn delete(&self, id: Uuid) -> Result<bool, anyhow::Error>;

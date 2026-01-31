@@ -24,12 +24,15 @@ async fn test_create_role() {
         "description": "A test role"
     });
 
+    let (_, token) = common::create_admin_with_permissions(&pool).await;
+
     let response = app
         .oneshot(
             Request::builder()
                 .uri("/api/v1/admin/roles")
                 .method("POST")
                 .header("content-type", "application/json")
+                .header("Authorization", format!("Bearer {}", token))
                 .body(Body::from(create_request.to_string()))
                 .unwrap(),
         )
@@ -63,6 +66,8 @@ async fn test_get_role() {
     let state = common::create_test_app_state(pool.clone());
     let app = caxur::presentation::router::app(state).unwrap();
 
+    let (_, token) = common::create_admin_with_permissions(&pool).await;
+
     // Create a role first
     let create_request = json!({
         "name": "Get Role Test",
@@ -76,6 +81,7 @@ async fn test_get_role() {
                 .uri("/api/v1/admin/roles")
                 .method("POST")
                 .header("content-type", "application/json")
+                .header("Authorization", format!("Bearer {}", token))
                 .body(Body::from(create_request.to_string()))
                 .unwrap(),
         )
@@ -94,6 +100,7 @@ async fn test_get_role() {
             Request::builder()
                 .uri(&format!("/api/v1/admin/roles/{}", role_id))
                 .method("GET")
+                .header("Authorization", format!("Bearer {}", token))
                 .body(Body::empty())
                 .unwrap(),
         )
@@ -114,11 +121,14 @@ async fn test_get_role_not_found() {
     let state = common::create_test_app_state(pool.clone());
     let app = caxur::presentation::router::app(state).unwrap();
 
+    let (_, token) = common::create_admin_with_permissions(&pool).await;
+
     let response = app
         .oneshot(
             Request::builder()
                 .uri(&format!("/api/v1/admin/roles/{}", Uuid::new_v4()))
                 .method("GET")
+                .header("Authorization", format!("Bearer {}", token))
                 .body(Body::empty())
                 .unwrap(),
         )
@@ -145,12 +155,15 @@ async fn test_list_roles() {
         "description": "Description"
     });
 
+    let (_, token) = common::create_admin_with_permissions(&pool).await;
+
     app.clone()
         .oneshot(
             Request::builder()
                 .uri("/api/v1/admin/roles")
                 .method("POST")
                 .header("content-type", "application/json")
+                .header("Authorization", format!("Bearer {}", token))
                 .body(Body::from(create_request.to_string()))
                 .unwrap(),
         )
@@ -163,6 +176,7 @@ async fn test_list_roles() {
             Request::builder()
                 .uri("/api/v1/admin/roles?page=1&per_page=10")
                 .method("GET")
+                .header("Authorization", format!("Bearer {}", token))
                 .body(Body::empty())
                 .unwrap(),
         )
@@ -182,7 +196,7 @@ async fn test_list_roles() {
     let meta = &json["meta"];
     assert_eq!(meta["page"], 1);
     assert_eq!(meta["perPage"], 10);
-    assert_eq!(meta["total"], 1);
+    assert_eq!(meta["total"], 2);
 
     common::cleanup_test_db(&pool).await;
 }
@@ -195,6 +209,8 @@ async fn test_update_role() {
 
     let state = common::create_test_app_state(pool.clone());
     let app = caxur::presentation::router::app(state).unwrap();
+
+    let (_, token) = common::create_admin_with_permissions(&pool).await;
 
     // Create a role
     let create_request = json!({
@@ -209,6 +225,7 @@ async fn test_update_role() {
                 .uri("/api/v1/admin/roles")
                 .method("POST")
                 .header("content-type", "application/json")
+                .header("Authorization", format!("Bearer {}", token))
                 .body(Body::from(create_request.to_string()))
                 .unwrap(),
         )
@@ -233,6 +250,7 @@ async fn test_update_role() {
                 .uri(&format!("/api/v1/admin/roles/{}", role_id))
                 .method("PUT")
                 .header("content-type", "application/json")
+                .header("Authorization", format!("Bearer {}", token))
                 .body(Body::from(update_request.to_string()))
                 .unwrap(),
         )
@@ -263,6 +281,8 @@ async fn test_delete_role() {
     let state = common::create_test_app_state(pool.clone());
     let app = caxur::presentation::router::app(state).unwrap();
 
+    let (_, token) = common::create_admin_with_permissions(&pool).await;
+
     // Create a role
     let create_request = json!({
         "name": "Delete Role Test",
@@ -276,6 +296,7 @@ async fn test_delete_role() {
                 .uri("/api/v1/admin/roles")
                 .method("POST")
                 .header("content-type", "application/json")
+                .header("Authorization", format!("Bearer {}", token))
                 .body(Body::from(create_request.to_string()))
                 .unwrap(),
         )
@@ -295,6 +316,7 @@ async fn test_delete_role() {
             Request::builder()
                 .uri(&format!("/api/v1/admin/roles/{}", role_id))
                 .method("DELETE")
+                .header("Authorization", format!("Bearer {}", token))
                 .body(Body::empty())
                 .unwrap(),
         )
@@ -328,6 +350,8 @@ async fn test_role_permissions() {
         "description": "Description"
     });
 
+    let (_, token) = common::create_admin_with_permissions(&pool).await;
+
     let create_response = app
         .clone()
         .oneshot(
@@ -335,6 +359,7 @@ async fn test_role_permissions() {
                 .uri("/api/v1/admin/roles")
                 .method("POST")
                 .header("content-type", "application/json")
+                .header("Authorization", format!("Bearer {}", token))
                 .body(Body::from(create_request.to_string()))
                 .unwrap(),
         )
@@ -359,6 +384,7 @@ async fn test_role_permissions() {
                 .uri(&format!("/api/v1/admin/roles/{}/permissions", role_id))
                 .method("POST")
                 .header("content-type", "application/json")
+                .header("Authorization", format!("Bearer {}", token))
                 .body(Body::from(attach_request.to_string()))
                 .unwrap(),
         )
@@ -381,6 +407,7 @@ async fn test_role_permissions() {
             Request::builder()
                 .uri(&format!("/api/v1/admin/roles/{}/permissions", role_id))
                 .method("GET")
+                .header("Authorization", format!("Bearer {}", token))
                 .body(Body::empty())
                 .unwrap(),
         )
@@ -409,6 +436,7 @@ async fn test_role_permissions() {
                 .uri(&format!("/api/v1/admin/roles/{}/permissions", role_id))
                 .method("DELETE")
                 .header("content-type", "application/json")
+                .header("Authorization", format!("Bearer {}", token))
                 .body(Body::from(detach_request.to_string()))
                 .unwrap(),
         )
@@ -423,6 +451,7 @@ async fn test_role_permissions() {
             Request::builder()
                 .uri(&format!("/api/v1/admin/roles/{}/permissions", role_id))
                 .method("GET")
+                .header("Authorization", format!("Bearer {}", token))
                 .body(Body::empty())
                 .unwrap(),
         )

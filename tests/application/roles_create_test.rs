@@ -17,6 +17,8 @@ async fn test_create_role_success() {
     let req = CreateRoleRequest {
         name: format!("Role_{}", prefix),
         description: Some("Test description".to_string()),
+        scope: "ADMINISTRATOR".to_string(),
+        group_id: None,
     };
 
     let role = use_case.execute(req).await.expect("Failed to create role");
@@ -39,6 +41,8 @@ async fn test_create_role_duplicate_name() {
     let req1 = CreateRoleRequest {
         name: name.clone(),
         description: None,
+        scope: "ADMINISTRATOR".to_string(),
+        group_id: None,
     };
     use_case
         .execute(req1)
@@ -48,6 +52,8 @@ async fn test_create_role_duplicate_name() {
     let req2 = CreateRoleRequest {
         name,
         description: Some("Duplicate".to_string()),
+        scope: "ADMINISTRATOR".to_string(),
+        group_id: None,
     };
     let result = use_case.execute(req2).await;
 

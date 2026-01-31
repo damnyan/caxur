@@ -39,13 +39,14 @@ mod tests {
         let use_case = ListPermissionsUseCase::new();
         let permissions = use_case.execute();
 
-        assert_eq!(permissions.len(), 2);
+        assert_eq!(permissions.len(), 3);
         assert!(
             permissions
                 .iter()
                 .any(|p| p.name == "administrator_management")
         );
         assert!(permissions.iter().any(|p| p.name == "role_management"));
+        assert!(permissions.iter().any(|p| p.name == "*"));
     }
 
     #[test]

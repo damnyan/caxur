@@ -22,13 +22,15 @@ impl RoleRepository for PostgresRoleRepository {
     async fn create(&self, new_role: NewRole) -> Result<Role, anyhow::Error> {
         let role_db = sqlx::query_as::<_, RoleDbModel>(
             r#"
-            INSERT INTO roles (name, description)
-            VALUES ($1, $2)
-            RETURNING id, name, description, created_at, updated_at
+            INSERT INTO roles (name, description, scope, group_id)
+            VALUES ($1, $2, $3, $4)
+            RETURNING id, name, description, scope, group_id, created_at, updated_at
             "#,
         )
         .bind(new_role.name)
         .bind(new_role.description)
+        .bind(new_role.scope)
+        .bind(new_role.group_id)
         .fetch_one(&self.pool)
         .await?;
 
@@ -39,7 +41,7 @@ impl RoleRepository for PostgresRoleRepository {
     async fn find_by_id(&self, id: Uuid) -> Result<Option<Role>, anyhow::Error> {
         let role_db = sqlx::query_as::<_, RoleDbModel>(
             r#"
-            SELECT id, name, description, created_at, updated_at
+            SELECT id, name, description, scope, group_id, created_at, updated_at
             FROM roles
             WHERE id = $1
             "#,
@@ -52,35 +54,72 @@ impl RoleRepository for PostgresRoleRepository {
     }
 
     #[tracing::instrument(skip(self))]
-    async fn find_by_name(&self, name: &str) -> Result<Option<Role>, anyhow::Error> {
-        let role_db = sqlx::query_as::<_, RoleDbModel>(
-            r#"
-            SELECT id, name, description, created_at, updated_at
-            FROM roles
-            WHERE name = $1
-            "#,
-        )
-        .bind(name)
-        .fetch_optional(&self.pool)
-        .await?;
+    async fn find_by_name(
+        &self,
+        name: &str,
+        scope: &str,
+        group_id: Option<Uuid>,
+    ) -> Result<Option<Role>, anyhow::Error> {
+        let mut query = String::from(
+            "SELECT id, name, description, scope, group_id, created_at, updated_at FROM roles WHERE name = $1 AND scope = $2",
+        );
+        match group_id {
+            Some(_) => query.push_str(" AND group_id = $3"),
+            None => query.push_str(" AND group_id IS NULL"),
+        }
+
+        let mut query_builder = sqlx::query_as::<_, RoleDbModel>(&query)
+            .bind(name)
+            .bind(scope);
+
+        if let Some(gid) = group_id {
+            query_builder = query_builder.bind(gid);
+        }
+
+        let role_db = query_builder.fetch_optional(&self.pool).await?;
 
         Ok(role_db.map(|r| r.into()))
     }
 
     #[tracing::instrument(skip(self))]
-    async fn find_all(&self, limit: i64, offset: i64) -> Result<Vec<Role>, anyhow::Error> {
-        let roles_db = sqlx::query_as::<_, RoleDbModel>(
-            r#"
-            SELECT id, name, description, created_at, updated_at
-            FROM roles
-            ORDER BY created_at DESC
-            LIMIT $1 OFFSET $2
-            "#,
-        )
-        .bind(limit)
-        .bind(offset)
-        .fetch_all(&self.pool)
-        .await?;
+    async fn find_all(
+        &self,
+        scope: &str,
+        group_id: Option<Uuid>,
+        limit: i64,
+        offset: i64,
+    ) -> Result<Vec<Role>, anyhow::Error> {
+        let mut query = String::from(
+            "SELECT id, name, description, scope, group_id, created_at, updated_at FROM roles WHERE scope = $1",
+        );
+        let mut param_index = 2; // Start after scope
+
+        if group_id.is_some() {
+            query.push_str(&format!(" AND group_id = ${}", param_index));
+            param_index += 1;
+        } else {
+            // If group_id is None, we might want to return global roles?
+            // Or strict filtering? "group_id IS NULL" implies global/admin roles usually.
+            // If the caller passes None, they likely want standard roles.
+            // Let's assume strict filtering for now.
+            query.push_str(" AND group_id IS NULL");
+        }
+
+        query.push_str(&format!(
+            " ORDER BY created_at DESC LIMIT ${} OFFSET ${}",
+            param_index,
+            param_index + 1
+        ));
+
+        let mut query_builder = sqlx::query_as::<_, RoleDbModel>(&query).bind(scope);
+
+        if let Some(gid) = group_id {
+            query_builder = query_builder.bind(gid);
+        }
+
+        query_builder = query_builder.bind(limit).bind(offset);
+
+        let roles_db = query_builder.fetch_all(&self.pool).await?;
 
         let roles = roles_db.into_iter().map(|r| r.into()).collect();
         Ok(roles)
@@ -122,7 +161,7 @@ impl RoleRepository for PostgresRoleRepository {
         updates.push("updated_at = NOW()".to_string());
         query.push_str(&updates.join(", "));
         query.push_str(&format!(
-            " WHERE id = ${} RETURNING id, name, description, created_at, updated_at",
+            " WHERE id = ${} RETURNING id, name, description, scope, group_id, created_at, updated_at",
             param_count
         ));
 
@@ -272,6 +311,8 @@ mod tests {
         let new_role = NewRole {
             name: format!("test_role_{}", uuid::Uuid::new_v4()),
             description: Some("Test role description".to_string()),
+            scope: "ADMINISTRATOR".to_string(),
+            group_id: None,
         };
 
         let result = repo.create(new_role.clone()).await;
@@ -280,6 +321,8 @@ mod tests {
         let role = result.unwrap();
         assert_eq!(role.name, new_role.name);
         assert_eq!(role.description, new_role.description);
+        assert_eq!(role.scope, "ADMINISTRATOR");
+        assert_eq!(role.group_id, None);
 
         // Cleanup
         repo.delete(role.id).await.unwrap();
@@ -293,10 +336,15 @@ mod tests {
         let new_role = NewRole {
             name: format!("test_role_{}", uuid::Uuid::new_v4()),
             description: None,
+            scope: "ADMINISTRATOR".to_string(),
+            group_id: None,
         };
 
         let created = repo.create(new_role.clone()).await.unwrap();
-        let found = repo.find_by_name(&new_role.name).await.unwrap();
+        let found = repo
+            .find_by_name(&new_role.name, "ADMINISTRATOR", None)
+            .await
+            .unwrap();
 
         assert!(found.is_some());
         assert_eq!(found.unwrap().id, created.id);
@@ -313,6 +361,8 @@ mod tests {
         let new_role = NewRole {
             name: format!("test_role_{}", uuid::Uuid::new_v4()),
             description: None,
+            scope: "ADMINISTRATOR".to_string(),
+            group_id: None,
         };
 
         let role = repo.create(new_role).await.unwrap();
@@ -346,6 +396,8 @@ mod tests {
         let new_role = NewRole {
             name: format!("test_role_{}", uuid::Uuid::new_v4()),
             description: None,
+            scope: "ADMINISTRATOR".to_string(),
+            group_id: None,
         };
 
         let role = repo.create(new_role).await.unwrap();

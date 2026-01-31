@@ -25,6 +25,8 @@ async fn test_get_permissions_success() {
         .create(caxur::domain::roles::NewRole {
             name: format!("role_get_{}", prefix),
             description: None,
+            scope: "ADMINISTRATOR".to_string(),
+            group_id: None,
         })
         .await
         .expect("Failed to create role");

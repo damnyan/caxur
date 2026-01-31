@@ -1,4 +1,5 @@
 #[allow(unused_imports)]
+use crate::application::auth::admin_login::AdminLoginRequest;
 use crate::application::auth::login::{LoginRequest, LoginResponse};
 use crate::application::auth::refresh::{RefreshTokenRequest, RefreshTokenResponse};
 use crate::application::roles::create::CreateRoleRequest;
@@ -30,6 +31,8 @@ use utoipa::OpenApi;
     ),
     paths(
         crate::presentation::handlers::auth::login,
+
+        crate::presentation::handlers::auth::admin_login,
         crate::presentation::handlers::auth::refresh_token,
         crate::presentation::handlers::users::create_user,
         crate::presentation::handlers::users::get_user,
@@ -61,6 +64,8 @@ use utoipa::OpenApi;
             DetachPermissionRequest,
             ListRolesQuery,
             LoginRequest,
+
+            AdminLoginRequest,
             LoginResponse,
             RefreshTokenRequest,
             RefreshTokenResponse,

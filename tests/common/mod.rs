@@ -122,3 +122,64 @@ pub fn generate_test_token(user_id: Uuid) -> String {
         .generate_access_token(user_id, "user".to_string())
         .expect("Failed to generate test token")
 }
+
+pub fn generate_admin_token(user_id: Uuid) -> String {
+    let auth_service = create_test_auth_service();
+    auth_service
+        .generate_access_token(user_id, "admin".to_string())
+        .expect("Failed to generate admin token")
+}
+
+pub async fn create_admin_with_permissions(pool: &PgPool) -> (Uuid, String) {
+    let admin_id = Uuid::new_v4();
+    let email = format!("admin_{}@example.com", Uuid::new_v4());
+
+    // 1. Create Administrator
+    sqlx::query!(
+        "INSERT INTO user_administrators (id, email, password_hash, first_name, last_name, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, NOW(), NOW())",
+        admin_id,
+        email,
+        "hash", // Dummy hash
+        "Test",
+        "Admin"
+    )
+    .execute(pool)
+    .await
+    .unwrap();
+
+    // 2. Create Role
+    let role_id = Uuid::new_v4();
+    sqlx::query!(
+        "INSERT INTO roles (id, name, description, scope, created_at, updated_at) VALUES ($1, $2, $3, $4, NOW(), NOW())",
+        role_id,
+        format!("Super Admin {}", Uuid::new_v4()),
+        "Test Super Admin",
+        "ADMINISTRATOR"
+    )
+    .execute(pool)
+    .await
+    .unwrap();
+
+    // 3. Assign Wildcard Permission using new schema
+    // The permission string is stored in role_permissions table
+    sqlx::query!(
+        "INSERT INTO role_permissions (role_id, permission) VALUES ($1, $2)",
+        role_id,
+        "*"
+    )
+    .execute(pool)
+    .await
+    .unwrap();
+
+    // 4. Assign Role to Admin
+    sqlx::query!(
+        "INSERT INTO administrator_roles (administrator_id, role_id, assigned_at) VALUES ($1, $2, NOW())",
+        admin_id,
+        role_id
+    )
+    .execute(pool)
+    .await
+    .unwrap();
+
+    (admin_id, generate_admin_token(admin_id))
+}

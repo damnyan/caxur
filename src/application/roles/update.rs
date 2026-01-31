@@ -31,15 +31,19 @@ impl UpdateRoleUseCase {
     #[tracing::instrument(skip(self, req))]
     pub async fn execute(&self, id: Uuid, req: UpdateRoleRequest) -> Result<Role, AppError> {
         // Check if role exists
-        self.repo
+        let existing_role = self
+            .repo
             .find_by_id(id)
             .await?
             .ok_or_else(|| AppError::NotFound(format!("Role with id {} not found", id)))?;
 
         // Check for duplicate name if name is being updated
         if let Some(ref name) = req.name
-            && let Some(existing) = self.repo.find_by_name(name).await?
-            && existing.id != id
+            && let Some(duplicate) = self
+                .repo
+                .find_by_name(name, &existing_role.scope, existing_role.group_id)
+                .await?
+            && duplicate.id != id
         {
             return Err(AppError::ValidationError(
                 "Role name already exists".to_string(),

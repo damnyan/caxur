@@ -20,7 +20,7 @@ pub fn app(state: AppState) -> anyhow::Result<Router> {
             "/api/v1/admin/administrators",
             routes::administrators::routes(),
         )
-        .nest("/api/v1/admin/roles", routes::roles::routes())
+        .nest("/api/v1/admin/roles", routes::roles::routes(state.clone()))
         .nest("/api/v1/admin/permissions", routes::permissions::routes())
         .layer(CompressionLayer::new())
         .layer(TraceLayer::new_for_http())

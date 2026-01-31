@@ -55,4 +55,11 @@ pub trait AdministratorRepository: Send + Sync {
         update: UpdateAdministrator,
     ) -> Result<Administrator, anyhow::Error>;
     async fn delete(&self, id: Uuid) -> Result<bool, anyhow::Error>;
+
+    async fn attach_roles(&self, admin_id: Uuid, role_ids: Vec<Uuid>) -> Result<(), anyhow::Error>;
+    async fn detach_roles(&self, admin_id: Uuid, role_ids: Vec<Uuid>) -> Result<(), anyhow::Error>;
+    async fn get_permissions(
+        &self,
+        admin_id: Uuid,
+    ) -> Result<Vec<crate::domain::permissions::Permission>, anyhow::Error>;
 }

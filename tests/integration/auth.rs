@@ -4,6 +4,7 @@ use axum::{
     body::Body,
     http::{Request, StatusCode},
 };
+use caxur::domain::password::PasswordHashingService;
 use serde_json::json;
 use serial_test::serial;
 use tower::ServiceExt;
@@ -436,6 +437,97 @@ async fn test_auth_user_extractor_refresh_token_rejected() {
                 .method("GET")
                 .header("authorization", format!("Bearer {}", refresh_token))
                 .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+
+    common::cleanup_test_db(&pool).await;
+}
+
+#[tokio::test]
+#[serial]
+async fn test_admin_login_success() {
+    let pool = setup_test_db_or_skip!();
+    common::cleanup_test_db(&pool).await;
+
+    let state = common::create_test_app_state(pool.clone());
+    let app = caxur::presentation::router::app(state).unwrap();
+
+    // Create admin manually
+    let admin_id = uuid::Uuid::new_v4();
+    let email = "admin_integration@example.com";
+    let password = "adminpassword";
+    let password_service = caxur::infrastructure::password::PasswordService::new();
+    let hash = password_service.hash_password(password).unwrap();
+
+    sqlx::query!(
+        "INSERT INTO user_administrators (id, email, password_hash, first_name, last_name, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, NOW(), NOW())",
+        admin_id,
+        email,
+        hash,
+        "Admin",
+        "Test"
+    )
+    .execute(&pool)
+    .await
+    .expect("Failed to create admin");
+
+    // Login
+    let login_request = json!({
+        "email": email,
+        "password": password
+    });
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/auth/admin/login")
+                .method("POST")
+                .header("content-type", "application/json")
+                .body(Body::from(login_request.to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(response.status(), StatusCode::OK);
+
+    let body = axum::body::to_bytes(response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+
+    assert!(json["data"]["attributes"]["accessToken"].is_string());
+    assert!(json["data"]["attributes"]["refreshToken"].is_string());
+    assert_eq!(json["data"]["attributes"]["tokenType"], "Bearer");
+
+    common::cleanup_test_db(&pool).await;
+}
+
+#[tokio::test]
+#[serial]
+async fn test_admin_login_invalid_credentials() {
+    let pool = setup_test_db_or_skip!();
+    common::cleanup_test_db(&pool).await;
+
+    let state = common::create_test_app_state(pool.clone());
+    let app = caxur::presentation::router::app(state).unwrap();
+
+    let login_request = json!({
+        "email": "nonexistent@example.com",
+        "password": "password"
+    });
+
+    let response = app
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/auth/admin/login")
+                .method("POST")
+                .header("content-type", "application/json")
+                .body(Body::from(login_request.to_string()))
                 .unwrap(),
         )
         .await

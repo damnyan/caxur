@@ -16,4 +16,8 @@ pub fn routes() -> Router<AppState> {
                 .put(administrators::update_admin)
                 .delete(administrators::delete_admin),
         )
+        .route(
+            "/{id}/roles",
+            post(administrators::attach_admin_roles).delete(administrators::detach_admin_roles),
+        )
 }

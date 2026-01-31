@@ -810,6 +810,21 @@ impl AdministratorRepository for FaultyAdministratorRepository {
     async fn delete(&self, _id: Uuid) -> anyhow::Result<bool> {
         unimplemented!()
     }
+
+    async fn attach_roles(&self, _admin_id: Uuid, _role_ids: Vec<Uuid>) -> anyhow::Result<()> {
+        unimplemented!()
+    }
+
+    async fn detach_roles(&self, _admin_id: Uuid, _role_ids: Vec<Uuid>) -> anyhow::Result<()> {
+        unimplemented!()
+    }
+
+    async fn get_permissions(
+        &self,
+        _admin_id: Uuid,
+    ) -> anyhow::Result<Vec<caxur::domain::permissions::Permission>> {
+        unimplemented!()
+    }
 }
 
 #[tokio::test]
@@ -839,4 +854,122 @@ async fn test_use_case_create_admin_repo_error() {
             result
         ),
     }
+}
+
+#[tokio::test]
+#[serial]
+async fn test_attach_detach_roles() {
+    let pool = setup_test_db_or_skip!();
+    common::cleanup_test_db(&pool).await;
+
+    let state = common::create_test_app_state(pool.clone());
+    let app = caxur::presentation::router::app(state).unwrap();
+
+    let user_id = Uuid::new_v4();
+    let token = common::generate_test_token(user_id);
+
+    // 1. Create an admin
+    let create_request = json!({
+        "firstName": "Role",
+        "lastName": "Admin",
+        "email": "role_admin@example.com",
+        "password": "password123"
+    });
+
+    let create_response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/api/v1/admin/administrators")
+                .method("POST")
+                .header("content-type", "application/json")
+                .header("authorization", format!("Bearer {}", token))
+                .body(Body::from(create_request.to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(create_response.status(), StatusCode::CREATED);
+    let body = axum::body::to_bytes(create_response.into_body(), usize::MAX)
+        .await
+        .unwrap();
+    let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    let admin_id = json["data"]["id"].as_str().unwrap();
+
+    // 2. Create a role manually
+    let role_id = Uuid::new_v4();
+    sqlx::query(
+        "INSERT INTO roles (id, name, created_at, updated_at) VALUES ($1, $2, NOW(), NOW())",
+    )
+    .bind(role_id)
+    .bind("Test Role")
+    .execute(&pool)
+    .await
+    .unwrap();
+
+    // 3. Attach role
+    let attach_request = json!({
+        "role_ids": [role_id]
+    });
+
+    let attach_response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri(&format!("/api/v1/admin/administrators/{}/roles", admin_id))
+                .method("POST")
+                .header("content-type", "application/json")
+                .header("authorization", format!("Bearer {}", token))
+                .body(Body::from(attach_request.to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(attach_response.status(), StatusCode::OK);
+
+    // Verify in DB
+    let role_count: (i64,) = sqlx::query_as(
+        "SELECT COUNT(*) FROM administrator_roles WHERE administrator_id = $1 AND role_id = $2",
+    )
+    .bind(Uuid::parse_str(admin_id).unwrap())
+    .bind(role_id)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(role_count.0, 1);
+
+    // 4. Detach role
+    let detach_request = json!({
+        "role_ids": [role_id]
+    });
+
+    let detach_response = app
+        .oneshot(
+            Request::builder()
+                .uri(&format!("/api/v1/admin/administrators/{}/roles", admin_id))
+                .method("DELETE")
+                .header("content-type", "application/json")
+                .header("authorization", format!("Bearer {}", token))
+                .body(Body::from(detach_request.to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+
+    assert_eq!(detach_response.status(), StatusCode::OK);
+
+    // Verify in DB
+    let role_count_after: (i64,) = sqlx::query_as(
+        "SELECT COUNT(*) FROM administrator_roles WHERE administrator_id = $1 AND role_id = $2",
+    )
+    .bind(Uuid::parse_str(admin_id).unwrap())
+    .bind(role_id)
+    .fetch_one(&pool)
+    .await
+    .unwrap();
+    assert_eq!(role_count_after.0, 0);
+
+    common::cleanup_test_db(&pool).await;
 }

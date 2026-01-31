@@ -192,7 +192,6 @@ impl AdministratorRepository for PostgresAdministratorRepository {
         Ok(admin_db.into())
     }
 
-    #[tracing::instrument(skip(self))]
     async fn delete(&self, id: Uuid) -> Result<bool, anyhow::Error> {
         let result = sqlx::query("DELETE FROM user_administrators WHERE id = $1")
             .bind(id)
@@ -200,5 +199,70 @@ impl AdministratorRepository for PostgresAdministratorRepository {
             .await?;
 
         Ok(result.rows_affected() > 0)
+    }
+
+    #[tracing::instrument(skip(self))]
+    async fn attach_roles(&self, admin_id: Uuid, role_ids: Vec<Uuid>) -> Result<(), anyhow::Error> {
+        if role_ids.is_empty() {
+            return Ok(());
+        }
+
+        let mut query_builder =
+            sqlx::QueryBuilder::new("INSERT INTO administrator_roles (administrator_id, role_id) ");
+
+        query_builder.push_values(role_ids, |mut b, role_id| {
+            b.push_bind(admin_id);
+            b.push_bind(role_id);
+        });
+
+        query_builder.push(" ON CONFLICT DO NOTHING");
+
+        let query = query_builder.build();
+        query.execute(&self.pool).await?;
+
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self))]
+    async fn detach_roles(&self, admin_id: Uuid, role_ids: Vec<Uuid>) -> Result<(), anyhow::Error> {
+        if role_ids.is_empty() {
+            return Ok(());
+        }
+
+        let query =
+            "DELETE FROM administrator_roles WHERE administrator_id = $1 AND role_id = ANY($2)";
+        sqlx::query(query)
+            .bind(admin_id)
+            .bind(role_ids)
+            .execute(&self.pool)
+            .await?;
+
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self))]
+    async fn get_permissions(
+        &self,
+        admin_id: Uuid,
+    ) -> Result<Vec<crate::domain::permissions::Permission>, anyhow::Error> {
+        // Query to get distinct permissions from all roles assigned to the administrator
+        let rows = sqlx::query!(
+            r#"
+            SELECT DISTINCT rp.permission as "permission!: String"
+            FROM administrator_roles ar
+            JOIN role_permissions rp ON ar.role_id = rp.role_id
+            WHERE ar.administrator_id = $1
+            "#,
+            admin_id
+        )
+        .fetch_all(&self.pool)
+        .await?;
+
+        let permissions = rows
+            .into_iter()
+            .filter_map(|row| row.permission.parse().ok())
+            .collect();
+
+        Ok(permissions)
     }
 }

@@ -24,6 +24,8 @@ async fn test_attach_permission_success() {
         .create(caxur::domain::roles::NewRole {
             name: format!("role_{}", prefix),
             description: None,
+            scope: "ADMINISTRATOR".to_string(),
+            group_id: None,
         })
         .await
         .expect("Failed to create role");
@@ -84,6 +86,8 @@ async fn test_detach_permission_success() {
         .create(caxur::domain::roles::NewRole {
             name: format!("role_d_{}", prefix),
             description: None,
+            scope: "ADMINISTRATOR".to_string(),
+            group_id: None,
         })
         .await
         .expect("Failed to create role");

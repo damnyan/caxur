@@ -2,6 +2,7 @@
 name = "caxur"
 version = "0.1.0"
 edition = "2024"
+default-run = "caxur"
 
 [dependencies]
 anyhow = "1.0.100"

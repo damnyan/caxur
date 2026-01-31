@@ -6,6 +6,9 @@ use crate::application::administrators::get::GetAdministratorUseCase;
 use crate::application::administrators::list::{
     ListAdministratorsRequest, ListAdministratorsUseCase,
 };
+use crate::application::administrators::roles::{
+    AttachRoles, AttachRolesRequest, DetachRoles, DetachRolesRequest,
+};
 use crate::application::administrators::update::{
     UpdateAdministratorRequest, UpdateAdministratorUseCase,
 };
@@ -282,4 +285,74 @@ pub async fn delete_admin(
     } else {
         Err(AppError::NotFound("Administrator not found".to_string()))
     }
+}
+
+/// Attach roles to an administrator
+#[utoipa::path(
+    post,
+    path = "/api/v1/admin/administrators/{id}/roles",
+    params(
+        ("id" = Uuid, Path, description = "Administrator ID")
+    ),
+    request_body = AttachRolesRequest,
+    responses(
+        (status = 200, description = "Roles attached successfully", body = JsonApiResponse<serde_json::Value>),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 404, description = "Administrator not found", body = ErrorResponse)
+    ),
+    security(
+        ("bearer_auth" = [])
+    ),
+    tag = "administrators"
+)]
+pub async fn attach_admin_roles(
+    State(pool): State<DbPool>,
+    Path(id): Path<Uuid>,
+    _auth: AuthUser,
+    ValidatedJson(req): ValidatedJson<AttachRolesRequest>,
+) -> Result<impl IntoResponse, AppError> {
+    let repo = Arc::new(PostgresAdministratorRepository::new(pool));
+    let use_case = AttachRoles::new(repo);
+
+    use_case.execute(id, req.role_ids).await?;
+
+    Ok((
+        StatusCode::OK,
+        Json(JsonApiResponse::new(json!({ "success": true }))),
+    ))
+}
+
+/// Detach roles from an administrator
+#[utoipa::path(
+    delete,
+    path = "/api/v1/admin/administrators/{id}/roles",
+    params(
+        ("id" = Uuid, Path, description = "Administrator ID")
+    ),
+    request_body = DetachRolesRequest,
+    responses(
+        (status = 200, description = "Roles detached successfully", body = JsonApiResponse<serde_json::Value>),
+        (status = 401, description = "Unauthorized", body = ErrorResponse),
+        (status = 404, description = "Administrator not found", body = ErrorResponse)
+    ),
+    security(
+        ("bearer_auth" = [])
+    ),
+    tag = "administrators"
+)]
+pub async fn detach_admin_roles(
+    State(pool): State<DbPool>,
+    Path(id): Path<Uuid>,
+    _auth: AuthUser,
+    ValidatedJson(req): ValidatedJson<DetachRolesRequest>,
+) -> Result<impl IntoResponse, AppError> {
+    let repo = Arc::new(PostgresAdministratorRepository::new(pool));
+    let use_case = DetachRoles::new(repo);
+
+    use_case.execute(id, req.role_ids).await?;
+
+    Ok((
+        StatusCode::OK,
+        Json(JsonApiResponse::new(json!({ "success": true }))),
+    ))
 }
