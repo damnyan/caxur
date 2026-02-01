@@ -52,7 +52,7 @@ impl From<LoginResponse> for AuthTokenResource {
         (status = 401, description = "Invalid credentials", body = ErrorResponse),
         (status = 422, description = "Validation error", body = ErrorResponse)
     ),
-    tag = "auth"
+    tag = "Client / Auth"
 )]
 pub async fn login(
     State(state): State<AppState>,
@@ -110,7 +110,7 @@ pub async fn login(
         (status = 401, description = "Invalid credentials", body = ErrorResponse),
         (status = 422, description = "Validation error", body = ErrorResponse)
     ),
-    tag = "auth"
+    tag = "Admin / Auth"
 )]
 pub async fn admin_login(
     State(state): State<AppState>,
@@ -159,7 +159,7 @@ pub async fn admin_login(
         (status = 401, description = "Invalid refresh token", body = ErrorResponse),
         (status = 422, description = "Validation error", body = ErrorResponse)
     ),
-    tag = "auth"
+    tag = "Client / Auth"
 )]
 pub async fn refresh_token(
     State(state): State<AppState>,

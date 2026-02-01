@@ -21,7 +21,7 @@ use utoipa::OpenApi;
 #[derive(OpenApi)]
 #[openapi(
     info(
-        title = "Caxur User API",
+        title = "Caxur API",
         version = "0.1.0",
         description = "Clean Architecture REST API with Axum and SQLx\n\nThis API follows the JSON:API v1.1 specification for all responses.",
         contact(
@@ -29,9 +29,11 @@ use utoipa::OpenApi;
             email = "support@example.com"
         )
     ),
+    servers(
+        (url = "http://localhost:3000", description = "Local Development Server"),
+    ),
     paths(
         crate::presentation::handlers::auth::login,
-
         crate::presentation::handlers::auth::admin_login,
         crate::presentation::handlers::auth::refresh_token,
         crate::presentation::handlers::users::create_user,
@@ -101,10 +103,11 @@ use utoipa::OpenApi;
         )
     ),
     tags(
-        (name = "auth", description = "Authentication endpoints"),
-        (name = "users", description = "User management endpoints"),
-        (name = "roles", description = "Role management endpoints"),
-        (name = "permissions", description = "Permission management endpoints")
+        (name = "Client / Auth", description = "Client Authentication endpoints"),
+        (name = "Admin / Auth", description = "Administrator Authentication endpoints"),
+        (name = "Admin / User Management", description = "User management endpoints"),
+        (name = "Admin / Role Management", description = "Role management endpoints"),
+        (name = "Admin / Permission Management", description = "Permission management endpoints")
     ),
     modifiers(&SecurityAddon)
 )]

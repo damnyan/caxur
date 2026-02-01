@@ -19,7 +19,7 @@ pub struct PermissionResource {
     responses(
         (status = 200, description = "List of permissions", body = JsonApiResponse<Vec<JsonApiResource<PermissionResource>>>),
     ),
-    tag = "permissions"
+    tag = "Admin / Permission Management"
 )]
 pub async fn list_permissions() -> Result<impl IntoResponse, AppError> {
     let use_case = ListPermissionsUseCase::new();

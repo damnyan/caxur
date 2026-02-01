@@ -59,7 +59,7 @@ use crate::infrastructure::password::PasswordService;
         (status = 201, description = "User created successfully", body = JsonApiResponse<JsonApiResource<UserResource>>),
         (status = 422, description = "Validation error", body = ErrorResponse)
     ),
-    tag = "users"
+    tag = "Admin / User Management"
 )]
 pub async fn create_user(
     State(pool): State<DbPool>,
@@ -90,7 +90,7 @@ pub async fn create_user(
     security(
         ("bearer_auth" = [])
     ),
-    tag = "users"
+    tag = "Admin / User Management"
 )]
 pub async fn get_user(
     State(pool): State<DbPool>,
@@ -124,7 +124,7 @@ pub async fn get_user(
     security(
         ("bearer_auth" = [])
     ),
-    tag = "users"
+    tag = "Admin / User Management"
 )]
 pub async fn list_users(
     State(pool): State<DbPool>,
@@ -192,7 +192,7 @@ pub async fn list_users(
     security(
         ("bearer_auth" = [])
     ),
-    tag = "users"
+    tag = "Admin / User Management"
 )]
 pub async fn update_user(
     State(pool): State<DbPool>,
@@ -237,7 +237,7 @@ pub async fn update_user(
     security(
         ("bearer_auth" = [])
     ),
-    tag = "users"
+    tag = "Admin / User Management"
 )]
 pub async fn delete_user(
     State(pool): State<DbPool>,

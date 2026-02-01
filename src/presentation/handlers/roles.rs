@@ -73,7 +73,7 @@ pub struct ListRolesQuery {
         (status = 201, description = "Role created successfully", body = JsonApiResponse<JsonApiResource<RoleResource>>),
         (status = 422, description = "Validation error", body = ErrorResponse)
     ),
-    tag = "roles",
+    tag = "Admin / Role Management",
     security(
         ("bearer_auth" = [])
     )
@@ -102,7 +102,7 @@ pub async fn create_role(
         (status = 200, description = "Role found", body = JsonApiResponse<JsonApiResource<RoleResource>>),
         (status = 404, description = "Role not found", body = ErrorResponse)
     ),
-    tag = "roles",
+    tag = "Admin / Role Management",
     security(
         ("bearer_auth" = [])
     )
@@ -128,7 +128,7 @@ pub async fn get_role(
     responses(
         (status = 200, description = "List of roles", body = JsonApiResponse<Vec<JsonApiResource<RoleResource>>>),
     ),
-    tag = "roles",
+    tag = "Admin / Role Management",
     security(
         ("bearer_auth" = [])
     )
@@ -188,7 +188,7 @@ pub async fn list_roles(
         (status = 404, description = "Role not found", body = ErrorResponse),
         (status = 422, description = "Validation error", body = ErrorResponse)
     ),
-    tag = "roles",
+    tag = "Admin / Role Management",
     security(
         ("bearer_auth" = [])
     )
@@ -218,7 +218,7 @@ pub async fn update_role(
         (status = 200, description = "Role deleted successfully", body = JsonApiResponse<serde_json::Value>),
         (status = 404, description = "Role not found", body = ErrorResponse)
     ),
-    tag = "roles",
+    tag = "Admin / Role Management",
     security(
         ("bearer_auth" = [])
     )
@@ -251,7 +251,7 @@ pub async fn delete_role(
         (status = 200, description = "Permission attached successfully", body = JsonApiResponse<serde_json::Value>),
         (status = 404, description = "Role not found", body = ErrorResponse)
     ),
-    tag = "roles",
+    tag = "Admin / Role Management",
     security(
         ("bearer_auth" = [])
     )
@@ -286,7 +286,7 @@ pub async fn attach_permission(
         (status = 200, description = "Permissions detached successfully", body = JsonApiResponse<serde_json::Value>),
         (status = 404, description = "Role not found", body = ErrorResponse)
     ),
-    tag = "roles",
+    tag = "Admin / Role Management",
     security(
         ("bearer_auth" = [])
     )
@@ -332,7 +332,7 @@ pub struct DetachPermissionRequest {
         (status = 200, description = "List of permissions", body = JsonApiResponse<Vec<PermissionDto>>),
         (status = 404, description = "Role not found", body = ErrorResponse)
     ),
-    tag = "roles",
+    tag = "Admin / Role Management",
     security(
         ("bearer_auth" = [])
     )

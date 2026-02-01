@@ -12,7 +12,16 @@ use crate::infrastructure::state::AppState;
 
 pub fn app(state: AppState) -> anyhow::Result<Router> {
     Ok(Router::new()
-        .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", ApiDoc::openapi()))
+        .merge(
+            SwaggerUi::new("/swagger-ui")
+                .url("/api-docs/openapi.json", ApiDoc::openapi())
+                .config(
+                    utoipa_swagger_ui::Config::new(["/api-docs/openapi.json"])
+                        .deep_linking(true)
+                        .default_models_expand_depth(-1) // Hide schemas by default to declutter
+                        .display_operation_id(true),
+                ),
+        )
         .route("/health", get(handlers::health::health_check))
         .nest("/api/v1/auth", routes::auth::routes())
         .nest("/api/v1/users", routes::users::routes())
