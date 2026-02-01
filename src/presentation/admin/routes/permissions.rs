@@ -1,4 +1,4 @@
-use crate::presentation::handlers::permissions;
+use crate::presentation::admin::handlers::permissions;
 use axum::{Router, routing::get};
 
 use crate::infrastructure::state::AppState;

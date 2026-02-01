@@ -7,13 +7,11 @@ use crate::application::roles::update::UpdateRoleRequest;
 use crate::application::users::create::CreateUserRequest;
 use crate::application::users::list::ListUsersRequest;
 use crate::application::users::update::UpdateUserRequest;
-use crate::presentation::dtos::PermissionDto;
-use crate::presentation::handlers::auth::AuthTokenResource;
-use crate::presentation::handlers::permissions::PermissionResource;
-use crate::presentation::handlers::roles::{
+use crate::presentation::admin::handlers::permissions::PermissionResource;
+use crate::presentation::admin::handlers::roles::{
     AttachPermissionRequest, DetachPermissionRequest, ListRolesQuery, RoleResource,
 };
-use crate::presentation::handlers::users::UserResource;
+use crate::presentation::dtos::{AuthTokenResource, PermissionDto, UserResource};
 use crate::shared::error::{ErrorResponse, JsonApiError, JsonApiErrorSource};
 use crate::shared::response::{JsonApiLinks, JsonApiMeta, JsonApiResource, JsonApiResponse};
 use utoipa::OpenApi;
@@ -33,23 +31,30 @@ use utoipa::OpenApi;
         (url = "http://localhost:3000", description = "Local Development Server"),
     ),
     paths(
-        crate::presentation::handlers::auth::login,
-        crate::presentation::handlers::auth::admin_login,
-        crate::presentation::handlers::auth::refresh_token,
-        crate::presentation::handlers::users::create_user,
-        crate::presentation::handlers::users::get_user,
-        crate::presentation::handlers::users::list_users,
-        crate::presentation::handlers::users::update_user,
-        crate::presentation::handlers::users::delete_user,
-        crate::presentation::handlers::roles::create_role,
-        crate::presentation::handlers::roles::get_role,
-        crate::presentation::handlers::roles::list_roles,
-        crate::presentation::handlers::roles::update_role,
-        crate::presentation::handlers::roles::delete_role,
-        crate::presentation::handlers::roles::attach_permission,
-        crate::presentation::handlers::roles::detach_permission,
-        crate::presentation::handlers::roles::get_role_permissions,
-        crate::presentation::handlers::permissions::list_permissions,
+        crate::presentation::client::handlers::auth::login,
+        crate::presentation::admin::handlers::auth::admin_login,
+        crate::presentation::client::handlers::auth::refresh_token,
+        crate::presentation::client::handlers::users::create_user,
+        crate::presentation::client::handlers::users::get_user,
+        crate::presentation::admin::handlers::users::list_users,
+        crate::presentation::client::handlers::users::update_user,
+        crate::presentation::client::handlers::users::delete_user,
+        crate::presentation::admin::handlers::administrators::create_admin,
+        crate::presentation::admin::handlers::administrators::get_admin,
+        crate::presentation::admin::handlers::administrators::list_admins,
+        crate::presentation::admin::handlers::administrators::update_admin,
+        crate::presentation::admin::handlers::administrators::delete_admin,
+        crate::presentation::admin::handlers::administrators::attach_admin_roles,
+        crate::presentation::admin::handlers::administrators::detach_admin_roles,
+        crate::presentation::admin::handlers::roles::create_role,
+        crate::presentation::admin::handlers::roles::get_role,
+        crate::presentation::admin::handlers::roles::list_roles,
+        crate::presentation::admin::handlers::roles::update_role,
+        crate::presentation::admin::handlers::roles::delete_role,
+        crate::presentation::admin::handlers::roles::attach_permission,
+        crate::presentation::admin::handlers::roles::detach_permission,
+        crate::presentation::admin::handlers::roles::get_role_permissions,
+        crate::presentation::admin::handlers::permissions::list_permissions,
     ),
     components(
         schemas(
@@ -104,7 +109,9 @@ use utoipa::OpenApi;
     ),
     tags(
         (name = "Client / Auth", description = "Client Authentication endpoints"),
+        (name = "Client / User", description = "User endpoints"),
         (name = "Admin / Auth", description = "Administrator Authentication endpoints"),
+        (name = "Admin / Administrator Management", description = "Administrator management endpoints"),
         (name = "Admin / User Management", description = "User management endpoints"),
         (name = "Admin / Role Management", description = "Role management endpoints"),
         (name = "Admin / Permission Management", description = "Permission management endpoints")

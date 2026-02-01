@@ -2,7 +2,7 @@ use crate::domain::administrators::AdministratorRepository;
 use crate::domain::permissions::Permission;
 use crate::infrastructure::repositories::administrators::PostgresAdministratorRepository;
 use crate::infrastructure::state::AppState; // Correct import
-use crate::presentation::handlers::auth::AuthUser;
+use crate::presentation::extractors::AuthUser;
 use crate::shared::error::AppError;
 use axum::{
     extract::{Request, State},

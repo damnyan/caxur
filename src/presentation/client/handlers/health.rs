@@ -26,6 +26,8 @@ pub async fn health_check(State(pool): State<DbPool>) -> impl IntoResponse {
     }
 }
 
+// Tests removed or need to be moved to a separate test file or kept here if infrastructure allows.
+// Keeping tests here for now.
 #[cfg(test)]
 mod tests {
     use super::*;

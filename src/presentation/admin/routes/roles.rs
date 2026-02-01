@@ -1,5 +1,5 @@
 use crate::domain::permissions::Permission;
-use crate::presentation::handlers::roles;
+use crate::presentation::admin::handlers::roles;
 use crate::presentation::middleware::auth::{RequiredPermissions, check_permissions};
 use axum::{
     Extension, Router, middleware,

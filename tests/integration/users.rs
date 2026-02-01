@@ -144,7 +144,7 @@ async fn test_list_users() {
     let response = app
         .oneshot(
             Request::builder()
-                .uri("/api/v1/users")
+                .uri("/api/v1/admin/users")
                 .method("GET")
                 .header("authorization", format!("Bearer {}", token))
                 .body(Body::empty())

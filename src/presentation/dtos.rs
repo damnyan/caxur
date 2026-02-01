@@ -32,6 +32,56 @@ impl From<PermissionDto> for Permission {
     }
 }
 
+use crate::application::auth::login::LoginResponse;
+
+#[derive(Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct AuthTokenResource {
+    pub access_token: String,
+    pub refresh_token: String,
+    pub token_type: String,
+    pub expires_in: i64,
+}
+
+impl From<LoginResponse> for AuthTokenResource {
+    fn from(response: LoginResponse) -> Self {
+        Self {
+            access_token: response.access_token,
+            refresh_token: response.refresh_token,
+            token_type: response.token_type,
+            expires_in: response.expires_in,
+        }
+    }
+}
+
+use crate::domain::users::User;
+
+#[derive(Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct UserResource {
+    pub id: String,
+    pub username: String,
+    pub email: String,
+    #[serde(with = "time::serde::iso8601")]
+    #[schema(value_type = String)]
+    pub created_at: time::OffsetDateTime,
+    #[serde(with = "time::serde::iso8601")]
+    #[schema(value_type = String)]
+    pub updated_at: time::OffsetDateTime,
+}
+
+impl From<User> for UserResource {
+    fn from(user: User) -> Self {
+        Self {
+            id: user.id.to_string(),
+            username: user.username,
+            email: user.email,
+            created_at: user.created_at,
+            updated_at: user.updated_at,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

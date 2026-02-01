@@ -16,7 +16,7 @@ use crate::domain::administrators::Administrator;
 use crate::infrastructure::db::DbPool;
 use crate::infrastructure::password::PasswordService;
 use crate::infrastructure::repositories::administrators::PostgresAdministratorRepository;
-use crate::presentation::handlers::auth::AuthUser;
+use crate::presentation::extractors::AuthUser;
 use crate::shared::error::{AppError, ErrorResponse};
 use crate::shared::response::{JsonApiMeta, JsonApiResource, JsonApiResponse};
 use crate::shared::validation::ValidatedJson;
@@ -79,7 +79,7 @@ impl From<Administrator> for AdministratorResource {
     security(
         ("bearer_auth" = [])
     ),
-    tag = "administrators"
+    tag = "Admin / Administrator Management"
 )]
 pub async fn create_admin(
     State(pool): State<DbPool>,
@@ -115,7 +115,7 @@ pub async fn create_admin(
     security(
         ("bearer_auth" = [])
     ),
-    tag = "administrators"
+    tag = "Admin / Administrator Management"
 )]
 pub async fn get_admin(
     State(pool): State<DbPool>,
@@ -152,7 +152,7 @@ pub async fn get_admin(
     security(
         ("bearer_auth" = [])
     ),
-    tag = "administrators"
+    tag = "Admin / Administrator Management"
 )]
 pub async fn list_admins(
     State(pool): State<DbPool>,
@@ -227,7 +227,7 @@ pub async fn list_admins(
     security(
         ("bearer_auth" = [])
     ),
-    tag = "administrators"
+    tag = "Admin / Administrator Management"
 )]
 pub async fn update_admin(
     State(pool): State<DbPool>,
@@ -264,7 +264,7 @@ pub async fn update_admin(
     security(
         ("bearer_auth" = [])
     ),
-    tag = "administrators"
+    tag = "Admin / Administrator Management"
 )]
 pub async fn delete_admin(
     State(pool): State<DbPool>,
@@ -303,7 +303,7 @@ pub async fn delete_admin(
     security(
         ("bearer_auth" = [])
     ),
-    tag = "administrators"
+    tag = "Admin / Administrator Management"
 )]
 pub async fn attach_admin_roles(
     State(pool): State<DbPool>,
@@ -338,7 +338,7 @@ pub async fn attach_admin_roles(
     security(
         ("bearer_auth" = [])
     ),
-    tag = "administrators"
+    tag = "Admin / Administrator Management"
 )]
 pub async fn detach_admin_roles(
     State(pool): State<DbPool>,

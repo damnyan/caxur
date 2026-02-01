@@ -310,7 +310,7 @@ async fn test_auth_user_extractor_missing_header() {
     let response = app
         .oneshot(
             Request::builder()
-                .uri("/api/v1/users")
+                .uri("/api/v1/admin/users")
                 .method("GET")
                 .body(Body::empty())
                 .unwrap(),
@@ -336,7 +336,7 @@ async fn test_auth_user_extractor_invalid_format() {
     let response = app
         .oneshot(
             Request::builder()
-                .uri("/api/v1/users")
+                .uri("/api/v1/admin/users")
                 .method("GET")
                 .header("authorization", "Basic sometoken")
                 .body(Body::empty())
@@ -363,7 +363,7 @@ async fn test_auth_user_extractor_invalid_token() {
     let response = app
         .oneshot(
             Request::builder()
-                .uri("/api/v1/users")
+                .uri("/api/v1/admin/users")
                 .method("GET")
                 .header("authorization", "Bearer invalid.token.here")
                 .body(Body::empty())
@@ -433,7 +433,7 @@ async fn test_auth_user_extractor_refresh_token_rejected() {
     let response = app
         .oneshot(
             Request::builder()
-                .uri("/api/v1/users")
+                .uri("/api/v1/admin/users")
                 .method("GET")
                 .header("authorization", format!("Bearer {}", refresh_token))
                 .body(Body::empty())
@@ -484,7 +484,7 @@ async fn test_admin_login_success() {
     let response = app
         .oneshot(
             Request::builder()
-                .uri("/api/v1/auth/admin/login")
+                .uri("/api/v1/admin/auth/login")
                 .method("POST")
                 .header("content-type", "application/json")
                 .body(Body::from(login_request.to_string()))
@@ -524,7 +524,7 @@ async fn test_admin_login_invalid_credentials() {
     let response = app
         .oneshot(
             Request::builder()
-                .uri("/api/v1/auth/admin/login")
+                .uri("/api/v1/admin/auth/login")
                 .method("POST")
                 .header("content-type", "application/json")
                 .body(Body::from(login_request.to_string()))

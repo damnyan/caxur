@@ -1,7 +1,7 @@
-use crate::presentation::handlers;
+use crate::presentation::admin;
+use crate::presentation::client;
 use crate::presentation::middleware;
 use crate::presentation::openapi::ApiDoc;
-use crate::presentation::routes;
 use axum::{Router, routing::get};
 use tower_http::compression::CompressionLayer;
 use tower_http::trace::TraceLayer;
@@ -18,19 +18,15 @@ pub fn app(state: AppState) -> anyhow::Result<Router> {
                 .config(
                     utoipa_swagger_ui::Config::new(["/api-docs/openapi.json"])
                         .deep_linking(true)
-                        .default_models_expand_depth(-1) // Hide schemas by default to declutter
+                        .default_models_expand_depth(-1)
                         .display_operation_id(true),
                 ),
         )
-        .route("/health", get(handlers::health::health_check))
-        .nest("/api/v1/auth", routes::auth::routes())
-        .nest("/api/v1/users", routes::users::routes())
-        .nest(
-            "/api/v1/admin/administrators",
-            routes::administrators::routes(),
-        )
-        .nest("/api/v1/admin/roles", routes::roles::routes(state.clone()))
-        .nest("/api/v1/admin/permissions", routes::permissions::routes())
+        .route("/health", get(client::handlers::health::health_check))
+        // Client routes (Auth, Users) nested under /api/v1
+        .nest("/api/v1", client::routes::routes())
+        // Admin routes nested under /api/v1/admin
+        .nest("/api/v1/admin", admin::routes::routes(state.clone()))
         .layer(CompressionLayer::new())
         .layer(TraceLayer::new_for_http())
         .layer(middleware::cors::cors_layer()?)

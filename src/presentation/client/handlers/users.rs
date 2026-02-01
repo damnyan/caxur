@@ -1,52 +1,23 @@
 use crate::application::users::create::{CreateUserRequest, CreateUserUseCase};
 use crate::application::users::delete::DeleteUserUseCase;
 use crate::application::users::get::GetUserUseCase;
-use crate::application::users::list::{ListUsersRequest, ListUsersUseCase};
 use crate::application::users::update::{UpdateUserRequest, UpdateUserUseCase};
-use crate::domain::users::{User, UserRepository};
 use crate::infrastructure::db::DbPool;
 use crate::infrastructure::repositories::users::PostgresUserRepository;
-use crate::presentation::handlers::auth::AuthUser;
+use crate::presentation::dtos::UserResource;
+use crate::presentation::extractors::AuthUser;
 use crate::shared::error::{AppError, ErrorResponse};
 use crate::shared::response::{JsonApiMeta, JsonApiResource, JsonApiResponse};
 use crate::shared::validation::ValidatedJson;
 use axum::{
     Json,
-    extract::{Path, Query, State},
-    http::{StatusCode, Uri},
+    extract::{Path, State},
+    http::StatusCode,
     response::IntoResponse,
 };
-use serde::Serialize;
 use serde_json::json;
 use std::sync::Arc;
-use utoipa::ToSchema;
 use uuid::Uuid;
-
-#[derive(Serialize, ToSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct UserResource {
-    pub id: String,
-    pub username: String,
-    pub email: String,
-    #[serde(with = "time::serde::iso8601")]
-    #[schema(value_type = String)]
-    pub created_at: time::OffsetDateTime,
-    #[serde(with = "time::serde::iso8601")]
-    #[schema(value_type = String)]
-    pub updated_at: time::OffsetDateTime,
-}
-
-impl From<User> for UserResource {
-    fn from(user: User) -> Self {
-        Self {
-            id: user.id.to_string(),
-            username: user.username,
-            email: user.email,
-            created_at: user.created_at,
-            updated_at: user.updated_at,
-        }
-    }
-}
 
 use crate::infrastructure::password::PasswordService;
 
@@ -59,7 +30,7 @@ use crate::infrastructure::password::PasswordService;
         (status = 201, description = "User created successfully", body = JsonApiResponse<JsonApiResource<UserResource>>),
         (status = 422, description = "Validation error", body = ErrorResponse)
     ),
-    tag = "Admin / User Management"
+    tag = "Client / User"
 )]
 pub async fn create_user(
     State(pool): State<DbPool>,
@@ -90,7 +61,7 @@ pub async fn create_user(
     security(
         ("bearer_auth" = [])
     ),
-    tag = "Admin / User Management"
+    tag = "Client / User"
 )]
 pub async fn get_user(
     State(pool): State<DbPool>,
@@ -112,68 +83,6 @@ pub async fn get_user(
     }
 }
 
-/// List all users with pagination
-#[utoipa::path(
-    get,
-    path = "/api/v1/users",
-    params(ListUsersRequest),
-    responses(
-        (status = 200, description = "List of users", body = JsonApiResponse<Vec<JsonApiResource<UserResource>>>),
-        (status = 401, description = "Unauthorized", body = ErrorResponse)
-    ),
-    security(
-        ("bearer_auth" = [])
-    ),
-    tag = "Admin / User Management"
-)]
-pub async fn list_users(
-    State(pool): State<DbPool>,
-    uri: Uri,
-    Query(req): Query<ListUsersRequest>,
-    _auth: AuthUser,
-) -> Result<impl IntoResponse, AppError> {
-    let repo = Arc::new(PostgresUserRepository::new(pool));
-    let use_case = ListUsersUseCase::new(repo.clone());
-
-    // Capture pagination values before moving req
-    let page_number = req.page.number;
-    let page_size = req.page.size;
-
-    let users = use_case.execute(req).await?;
-
-    // Get total count for pagination
-    let total = repo.count().await.map_err(AppError::InternalServerError)?;
-
-    let resources: Vec<JsonApiResource<UserResource>> = users
-        .into_iter()
-        .map(|user| JsonApiResource::new("users", user.id.to_string(), UserResource::from(user)))
-        .collect();
-
-    // Calculate pagination metadata
-    let meta = JsonApiMeta::new()
-        .with_page(page_number)
-        .with_per_page(page_size)
-        .with_total(total);
-
-    // Generate pagination links using the helper
-    let links = crate::shared::pagination::PaginationLinkBuilder::from_uri(
-        &uri,
-        page_number,
-        page_size,
-        total,
-    )
-    .build();
-
-    Ok((
-        StatusCode::OK,
-        Json(
-            JsonApiResponse::new(resources)
-                .with_meta(meta)
-                .with_links(links),
-        ),
-    ))
-}
-
 /// Update a user
 #[utoipa::path(
     put,
@@ -192,7 +101,7 @@ pub async fn list_users(
     security(
         ("bearer_auth" = [])
     ),
-    tag = "Admin / User Management"
+    tag = "Client / User"
 )]
 pub async fn update_user(
     State(pool): State<DbPool>,
@@ -237,7 +146,7 @@ pub async fn update_user(
     security(
         ("bearer_auth" = [])
     ),
-    tag = "Admin / User Management"
+    tag = "Client / User"
 )]
 pub async fn delete_user(
     State(pool): State<DbPool>,

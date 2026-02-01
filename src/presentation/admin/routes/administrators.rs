@@ -1,4 +1,4 @@
-use crate::presentation::handlers::administrators;
+use crate::presentation::admin::handlers::administrators;
 use axum::{
     Router,
     routing::{get, post},
