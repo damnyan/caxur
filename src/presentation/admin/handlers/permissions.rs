@@ -1,4 +1,5 @@
 use crate::application::permissions::list::ListPermissionsUseCase;
+use crate::domain::permissions::PermissionScope;
 use crate::shared::error::AppError;
 use crate::shared::response::{JsonApiResource, JsonApiResponse};
 use axum::{Json, http::StatusCode, response::IntoResponse};
@@ -22,7 +23,7 @@ pub struct PermissionResource {
     tag = "Admin / Permission Management"
 )]
 pub async fn list_permissions() -> Result<impl IntoResponse, AppError> {
-    let use_case = ListPermissionsUseCase::new();
+    let use_case = ListPermissionsUseCase::new().with_scope(PermissionScope::Administrator);
     let permissions = use_case.execute();
 
     let resources: Vec<JsonApiResource<PermissionResource>> = permissions

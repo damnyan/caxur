@@ -14,6 +14,12 @@ pub enum Permission {
     RoleManagement,
 }
 
+/// Scopes define the context where a permission is applicable
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum PermissionScope {
+    Administrator,
+}
+
 impl Permission {
     /// Returns all available permissions
     pub fn all() -> Vec<Permission> {
@@ -34,12 +40,12 @@ impl Permission {
     }
 
     /// Returns the scopes allowed for this permission
-    pub fn scopes(&self) -> Vec<&'static str> {
+    pub fn scopes(&self) -> Vec<PermissionScope> {
         match self {
             // Wildcard is allowed in all scopes by default, checking logic handles the rest
-            Permission::Wildcard => vec!["ADMINISTRATOR"],
-            Permission::AdministratorManagement => vec!["ADMINISTRATOR"],
-            Permission::RoleManagement => vec!["ADMINISTRATOR"],
+            Permission::Wildcard => vec![PermissionScope::Administrator],
+            Permission::AdministratorManagement => vec![PermissionScope::Administrator],
+            Permission::RoleManagement => vec![PermissionScope::Administrator],
         }
     }
 }
@@ -130,16 +136,16 @@ mod tests {
         // Test AdministratorManagement scopes
         let admin_scopes = Permission::AdministratorManagement.scopes();
         assert_eq!(admin_scopes.len(), 1);
-        assert_eq!(admin_scopes[0], "ADMINISTRATOR");
+        assert_eq!(admin_scopes[0], PermissionScope::Administrator);
 
         // Test RoleManagement scopes
         let role_scopes = Permission::RoleManagement.scopes();
         assert_eq!(role_scopes.len(), 1);
-        assert_eq!(role_scopes[0], "ADMINISTRATOR");
+        assert_eq!(role_scopes[0], PermissionScope::Administrator);
 
         // Test Wildcard scopes
         let wildcard_scopes = Permission::Wildcard.scopes();
         assert_eq!(wildcard_scopes.len(), 1);
-        assert_eq!(wildcard_scopes[0], "ADMINISTRATOR");
+        assert_eq!(wildcard_scopes[0], PermissionScope::Administrator);
     }
 }
