@@ -18,11 +18,12 @@ use crate::infrastructure::password::PasswordService;
 use crate::infrastructure::repositories::administrators::PostgresAdministratorRepository;
 use crate::presentation::extractors::AuthUser;
 use crate::shared::error::{AppError, ErrorResponse};
+use crate::shared::query::Qs;
 use crate::shared::response::{JsonApiMeta, JsonApiResource, JsonApiResponse};
 use crate::shared::validation::ValidatedJson;
 use axum::{
     Json,
-    extract::{Path, Query, State},
+    extract::{Path, State},
     http::{StatusCode, Uri},
     response::IntoResponse,
 };
@@ -157,7 +158,7 @@ pub async fn get_admin(
 pub async fn list_admins(
     State(pool): State<DbPool>,
     uri: Uri,
-    Query(req): Query<ListAdministratorsRequest>,
+    Qs(req): Qs<ListAdministratorsRequest>,
     _auth: AuthUser,
 ) -> Result<impl IntoResponse, AppError> {
     let repo = Arc::new(PostgresAdministratorRepository::new(pool));

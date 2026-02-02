@@ -40,6 +40,7 @@ sha2 = "0.10"
 futures = "0.3"
 tower_governor = "0.8.0"
 governor = "0.10.4"
+serde_qs = "1.0.0"
 
 [dev-dependencies]
 http-body-util = "0.1.3"
