@@ -58,11 +58,7 @@ impl CreateAdministratorUseCase {
         req: CreateAdministratorRequest,
     ) -> Result<Administrator, AppError> {
         // Check if email already exists
-        if self.repo.find_by_email(&req.email).await?.is_some() {
-            return Err(AppError::ValidationError(
-                "Email already registered".to_string(),
-            ));
-        }
+        req.validate_unique_email(&self.repo).await?;
 
         let password_hash = self
             .password_service

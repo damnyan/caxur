@@ -2,6 +2,8 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::str::FromStr;
 
+use super::access_scope::AccessScope;
+
 /// Pre-defined permissions for RBAC system
 /// These permissions control access to various resources and operations
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -12,12 +14,6 @@ pub enum Permission {
     AdministratorManagement,
     #[serde(rename = "role_management")]
     RoleManagement,
-}
-
-/// Scopes define the context where a permission is applicable
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum PermissionScope {
-    Administrator,
 }
 
 impl Permission {
@@ -40,12 +36,12 @@ impl Permission {
     }
 
     /// Returns the scopes allowed for this permission
-    pub fn scopes(&self) -> Vec<PermissionScope> {
+    pub fn scopes(&self) -> Vec<AccessScope> {
         match self {
             // Wildcard is allowed in all scopes by default, checking logic handles the rest
-            Permission::Wildcard => vec![PermissionScope::Administrator],
-            Permission::AdministratorManagement => vec![PermissionScope::Administrator],
-            Permission::RoleManagement => vec![PermissionScope::Administrator],
+            Permission::Wildcard => vec![AccessScope::Administrator],
+            Permission::AdministratorManagement => vec![AccessScope::Administrator],
+            Permission::RoleManagement => vec![AccessScope::Administrator],
         }
     }
 }
@@ -136,16 +132,17 @@ mod tests {
         // Test AdministratorManagement scopes
         let admin_scopes = Permission::AdministratorManagement.scopes();
         assert_eq!(admin_scopes.len(), 1);
-        assert_eq!(admin_scopes[0], PermissionScope::Administrator);
+        assert_eq!(admin_scopes[0], AccessScope::Administrator);
 
+        // Test RoleManagement scopes
         // Test RoleManagement scopes
         let role_scopes = Permission::RoleManagement.scopes();
         assert_eq!(role_scopes.len(), 1);
-        assert_eq!(role_scopes[0], PermissionScope::Administrator);
+        assert_eq!(role_scopes[0], AccessScope::Administrator); // Fixed from PermissionScope to AccessScope
 
         // Test Wildcard scopes
         let wildcard_scopes = Permission::Wildcard.scopes();
         assert_eq!(wildcard_scopes.len(), 1);
-        assert_eq!(wildcard_scopes[0], PermissionScope::Administrator);
+        assert_eq!(wildcard_scopes[0], AccessScope::Administrator); // Fixed from PermissionScope to AccessScope
     }
 }

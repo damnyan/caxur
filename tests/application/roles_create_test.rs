@@ -1,6 +1,7 @@
 use crate::common;
 use crate::setup_test_db_or_skip;
 use caxur::application::roles::create::{CreateRoleRequest, CreateRoleUseCase};
+use caxur::domain::access_scope::AccessScope;
 use caxur::infrastructure::repositories::roles::PostgresRoleRepository;
 use serial_test::serial;
 use std::sync::Arc;
@@ -17,7 +18,7 @@ async fn test_create_role_success() {
     let req = CreateRoleRequest {
         name: format!("Role_{}", prefix),
         description: Some("Test description".to_string()),
-        scope: "ADMINISTRATOR".to_string(),
+        scope: AccessScope::Administrator,
         group_id: None,
     };
 
@@ -41,7 +42,7 @@ async fn test_create_role_duplicate_name() {
     let req1 = CreateRoleRequest {
         name: name.clone(),
         description: None,
-        scope: "ADMINISTRATOR".to_string(),
+        scope: AccessScope::Administrator,
         group_id: None,
     };
     use_case
@@ -52,7 +53,7 @@ async fn test_create_role_duplicate_name() {
     let req2 = CreateRoleRequest {
         name,
         description: Some("Duplicate".to_string()),
-        scope: "ADMINISTRATOR".to_string(),
+        scope: AccessScope::Administrator,
         group_id: None,
     };
     let result = use_case.execute(req2).await;

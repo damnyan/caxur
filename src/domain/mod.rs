@@ -1,3 +1,4 @@
+pub mod access_scope;
 pub mod administrators;
 pub mod auth;
 pub mod password;

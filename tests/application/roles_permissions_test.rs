@@ -2,6 +2,7 @@ use crate::common;
 use crate::setup_test_db_or_skip;
 use caxur::application::roles::attach_permission::AttachPermissionUseCase;
 use caxur::application::roles::detach_permission::DetachPermissionUseCase;
+use caxur::domain::access_scope::AccessScope;
 use caxur::domain::permissions::Permission;
 use caxur::domain::roles::RoleRepository;
 use caxur::infrastructure::repositories::roles::PostgresRoleRepository;
@@ -24,7 +25,7 @@ async fn test_attach_permission_success() {
         .create(caxur::domain::roles::NewRole {
             name: format!("role_{}", prefix),
             description: None,
-            scope: "ADMINISTRATOR".to_string(),
+            scope: AccessScope::Administrator,
             group_id: None,
         })
         .await
@@ -86,7 +87,7 @@ async fn test_detach_permission_success() {
         .create(caxur::domain::roles::NewRole {
             name: format!("role_d_{}", prefix),
             description: None,
-            scope: "ADMINISTRATOR".to_string(),
+            scope: AccessScope::Administrator,
             group_id: None,
         })
         .await

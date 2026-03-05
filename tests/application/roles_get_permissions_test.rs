@@ -2,6 +2,7 @@ use crate::common;
 use crate::setup_test_db_or_skip;
 use caxur::application::roles::attach_permission::AttachPermissionUseCase;
 use caxur::application::roles::get_permissions::GetRolePermissionsUseCase;
+use caxur::domain::access_scope::AccessScope;
 use caxur::domain::permissions::Permission;
 use caxur::domain::roles::RoleRepository;
 use caxur::infrastructure::repositories::roles::PostgresRoleRepository;
@@ -25,7 +26,7 @@ async fn test_get_permissions_success() {
         .create(caxur::domain::roles::NewRole {
             name: format!("role_get_{}", prefix),
             description: None,
-            scope: "ADMINISTRATOR".to_string(),
+            scope: AccessScope::Administrator,
             group_id: None,
         })
         .await

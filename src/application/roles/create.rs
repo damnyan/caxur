@@ -1,3 +1,4 @@
+use crate::domain::access_scope::AccessScope;
 use crate::domain::roles::{NewRole, Role, RoleRepository};
 use crate::shared::error::AppError;
 use serde::Deserialize;
@@ -7,8 +8,8 @@ use validator::Validate;
 
 use uuid::Uuid;
 
-fn default_scope() -> String {
-    "ADMINISTRATOR".to_string()
+fn default_scope() -> AccessScope {
+    AccessScope::Administrator
 }
 
 #[derive(Deserialize, Validate, ToSchema)]
@@ -24,7 +25,7 @@ pub struct CreateRoleRequest {
     pub description: Option<String>,
     #[serde(default = "default_scope")]
     #[schema(example = "ADMINISTRATOR")]
-    pub scope: String,
+    pub scope: AccessScope,
     #[schema(example = "00000000-0000-0000-0000-000000000000")]
     pub group_id: Option<Uuid>,
 }
@@ -36,7 +37,7 @@ impl CreateRoleRequest {
         repo: &Arc<dyn RoleRepository>,
     ) -> Result<(), AppError> {
         if repo
-            .find_by_name(&self.name, &self.scope, self.group_id)
+            .find_by_name(&self.name, self.scope, self.group_id)
             .await?
             .is_some()
         {

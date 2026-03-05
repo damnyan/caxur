@@ -1,6 +1,7 @@
 use crate::common;
 use crate::setup_test_db_or_skip;
 use caxur::application::roles::update::{UpdateRoleRequest, UpdateRoleUseCase};
+use caxur::domain::access_scope::AccessScope;
 use caxur::domain::roles::RoleRepository;
 use caxur::infrastructure::repositories::roles::PostgresRoleRepository;
 use caxur::shared::error::AppError;
@@ -22,7 +23,7 @@ async fn test_update_role_success() {
     let new_role = caxur::domain::roles::NewRole {
         name: format!("role_{}", prefix),
         description: Some("Original description".to_string()),
-        scope: "ADMINISTRATOR".to_string(),
+        scope: AccessScope::Administrator,
         group_id: None,
     };
     let role = repo.create(new_role).await.expect("Failed to create role");
@@ -84,7 +85,7 @@ async fn test_update_role_name_conflict() {
         .create(caxur::domain::roles::NewRole {
             name: format!("role1_{}", prefix),
             description: None,
-            scope: "ADMINISTRATOR".to_string(),
+            scope: AccessScope::Administrator,
             group_id: None,
         })
         .await
@@ -95,7 +96,7 @@ async fn test_update_role_name_conflict() {
         .create(caxur::domain::roles::NewRole {
             name: format!("role2_{}", prefix),
             description: None,
-            scope: "ADMINISTRATOR".to_string(),
+            scope: AccessScope::Administrator,
             group_id: None,
         })
         .await

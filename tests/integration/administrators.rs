@@ -676,7 +676,7 @@ async fn test_use_case_create_admin_duplicate_email() {
 
     match result {
         Err(caxur::shared::error::AppError::ValidationError(msg)) => {
-            assert_eq!(msg, "Email already registered");
+            assert_eq!(msg, "Email already exists");
         }
         _ => panic!("Expected ValidationError, got {:?}", result),
     }

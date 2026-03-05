@@ -41,7 +41,7 @@ impl UpdateRoleUseCase {
         if let Some(ref name) = req.name
             && let Some(duplicate) = self
                 .repo
-                .find_by_name(name, &existing_role.scope, existing_role.group_id)
+                .find_by_name(name, existing_role.scope, existing_role.group_id)
                 .await?
             && duplicate.id != id
         {

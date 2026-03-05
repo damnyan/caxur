@@ -6,6 +6,7 @@ use crate::application::roles::get::GetRoleUseCase;
 use crate::application::roles::get_permissions::GetRolePermissionsUseCase;
 use crate::application::roles::list::ListRolesUseCase;
 use crate::application::roles::update::{UpdateRoleRequest, UpdateRoleUseCase};
+use crate::domain::access_scope::AccessScope;
 use crate::domain::permissions::Permission;
 use crate::domain::roles::{Role, RoleRepository};
 use crate::infrastructure::db::DbPool;
@@ -142,7 +143,7 @@ pub async fn list_roles(
     let use_case = ListRolesUseCase::new(repo.clone());
 
     let roles = use_case
-        .execute("ADMINISTRATOR", None, query.per_page, query.page)
+        .execute(AccessScope::Administrator, None, query.per_page, query.page)
         .await?;
 
     let total = repo.count().await.map_err(AppError::InternalServerError)?;

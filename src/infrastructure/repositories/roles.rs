@@ -1,3 +1,4 @@
+use crate::domain::access_scope::AccessScope;
 use crate::domain::permissions::Permission;
 use crate::domain::roles::{NewRole, Role, RoleRepository, UpdateRole};
 use crate::infrastructure::db::DbPool;
@@ -29,7 +30,7 @@ impl RoleRepository for PostgresRoleRepository {
         )
         .bind(new_role.name)
         .bind(new_role.description)
-        .bind(new_role.scope)
+        .bind(new_role.scope.to_string())
         .bind(new_role.group_id)
         .fetch_one(&self.pool)
         .await?;
@@ -57,7 +58,7 @@ impl RoleRepository for PostgresRoleRepository {
     async fn find_by_name(
         &self,
         name: &str,
-        scope: &str,
+        scope: AccessScope,
         group_id: Option<Uuid>,
     ) -> Result<Option<Role>, anyhow::Error> {
         let mut query = String::from(
@@ -70,7 +71,7 @@ impl RoleRepository for PostgresRoleRepository {
 
         let mut query_builder = sqlx::query_as::<_, RoleDbModel>(&query)
             .bind(name)
-            .bind(scope);
+            .bind(scope.to_string());
 
         if let Some(gid) = group_id {
             query_builder = query_builder.bind(gid);
@@ -84,7 +85,7 @@ impl RoleRepository for PostgresRoleRepository {
     #[tracing::instrument(skip(self))]
     async fn find_all(
         &self,
-        scope: &str,
+        scope: AccessScope,
         group_id: Option<Uuid>,
         limit: i64,
         offset: i64,
@@ -111,7 +112,7 @@ impl RoleRepository for PostgresRoleRepository {
             param_index + 1
         ));
 
-        let mut query_builder = sqlx::query_as::<_, RoleDbModel>(&query).bind(scope);
+        let mut query_builder = sqlx::query_as::<_, RoleDbModel>(&query).bind(scope.to_string());
 
         if let Some(gid) = group_id {
             query_builder = query_builder.bind(gid);
@@ -311,7 +312,7 @@ mod tests {
         let new_role = NewRole {
             name: format!("test_role_{}", uuid::Uuid::new_v4()),
             description: Some("Test role description".to_string()),
-            scope: "ADMINISTRATOR".to_string(),
+            scope: AccessScope::Administrator,
             group_id: None,
         };
 
@@ -321,7 +322,7 @@ mod tests {
         let role = result.unwrap();
         assert_eq!(role.name, new_role.name);
         assert_eq!(role.description, new_role.description);
-        assert_eq!(role.scope, "ADMINISTRATOR");
+        assert_eq!(role.scope, AccessScope::Administrator);
         assert_eq!(role.group_id, None);
 
         // Cleanup
@@ -336,13 +337,13 @@ mod tests {
         let new_role = NewRole {
             name: format!("test_role_{}", uuid::Uuid::new_v4()),
             description: None,
-            scope: "ADMINISTRATOR".to_string(),
+            scope: AccessScope::Administrator,
             group_id: None,
         };
 
         let created = repo.create(new_role.clone()).await.unwrap();
         let found = repo
-            .find_by_name(&new_role.name, "ADMINISTRATOR", None)
+            .find_by_name(&new_role.name, AccessScope::Administrator, None)
             .await
             .unwrap();
 
@@ -361,7 +362,7 @@ mod tests {
         let new_role = NewRole {
             name: format!("test_role_{}", uuid::Uuid::new_v4()),
             description: None,
-            scope: "ADMINISTRATOR".to_string(),
+            scope: AccessScope::Administrator,
             group_id: None,
         };
 
@@ -396,7 +397,7 @@ mod tests {
         let new_role = NewRole {
             name: format!("test_role_{}", uuid::Uuid::new_v4()),
             description: None,
-            scope: "ADMINISTRATOR".to_string(),
+            scope: AccessScope::Administrator,
             group_id: None,
         };
 

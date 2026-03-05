@@ -1,3 +1,4 @@
+use super::access_scope::AccessScope;
 use super::permissions::Permission;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -10,7 +11,7 @@ pub struct Role {
     pub id: Uuid,
     pub name: String,
     pub description: Option<String>,
-    pub scope: String,
+    pub scope: AccessScope,
     pub group_id: Option<Uuid>,
     #[serde(with = "time::serde::iso8601")]
     pub created_at: OffsetDateTime,
@@ -22,7 +23,7 @@ pub struct Role {
 pub struct NewRole {
     pub name: String,
     pub description: Option<String>,
-    pub scope: String,
+    pub scope: AccessScope,
     pub group_id: Option<Uuid>,
 }
 
@@ -39,12 +40,12 @@ pub trait RoleRepository: Send + Sync {
     async fn find_by_name(
         &self,
         name: &str,
-        scope: &str,
+        scope: AccessScope,
         group_id: Option<Uuid>,
     ) -> Result<Option<Role>, anyhow::Error>;
     async fn find_all(
         &self,
-        scope: &str,
+        scope: AccessScope,
         group_id: Option<Uuid>,
         limit: i64,
         offset: i64,

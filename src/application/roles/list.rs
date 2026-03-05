@@ -1,3 +1,4 @@
+use crate::domain::access_scope::AccessScope;
 use crate::domain::roles::{Role, RoleRepository};
 use crate::shared::error::AppError;
 use std::sync::Arc;
@@ -15,7 +16,7 @@ impl ListRolesUseCase {
     #[tracing::instrument(skip(self))]
     pub async fn execute(
         &self,
-        scope: &str,
+        scope: AccessScope,
         group_id: Option<Uuid>,
         per_page: i64,
         page: i64,

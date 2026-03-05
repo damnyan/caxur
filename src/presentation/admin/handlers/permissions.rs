@@ -1,5 +1,5 @@
 use crate::application::permissions::list::{ListPermissionsRequest, ListPermissionsUseCase};
-use crate::domain::permissions::PermissionScope;
+use crate::domain::access_scope::AccessScope;
 use crate::shared::error::AppError;
 use crate::shared::query::Qs;
 use crate::shared::response::{JsonApiMeta, JsonApiResource, JsonApiResponse};
@@ -32,7 +32,7 @@ pub async fn list_permissions(
     uri: Uri,
     Qs(req): Qs<ListPermissionsRequest>,
 ) -> Result<impl IntoResponse, AppError> {
-    let use_case = ListPermissionsUseCase::new().with_scope(PermissionScope::Administrator);
+    let use_case = ListPermissionsUseCase::new().with_scope(AccessScope::Administrator);
 
     // Capture pagination values before moving req
     let page_number = req.page.number;

@@ -1,4 +1,5 @@
-use crate::domain::permissions::{Permission, PermissionScope};
+use crate::domain::access_scope::AccessScope;
+use crate::domain::permissions::Permission;
 use serde::Serialize;
 use utoipa::ToSchema;
 
@@ -40,7 +41,7 @@ pub struct PermissionResponse {
 
 #[derive(Default)]
 pub struct ListPermissionsUseCase {
-    scope: Option<PermissionScope>,
+    scope: Option<AccessScope>,
 }
 
 impl ListPermissionsUseCase {
@@ -48,7 +49,7 @@ impl ListPermissionsUseCase {
         Self { scope: None }
     }
 
-    pub fn with_scope(mut self, scope: impl Into<PermissionScope>) -> Self {
+    pub fn with_scope(mut self, scope: impl Into<AccessScope>) -> Self {
         self.scope = Some(scope.into());
         self
     }
@@ -123,7 +124,7 @@ mod tests {
 
     #[test]
     fn test_list_permissions_with_admin_scope() {
-        let use_case = ListPermissionsUseCase::new().with_scope(PermissionScope::Administrator);
+        let use_case = ListPermissionsUseCase::new().with_scope(AccessScope::Administrator);
         let req = ListPermissionsRequest {
             page: PageParams::default(),
         };
@@ -191,7 +192,7 @@ mod tests {
 
     #[test]
     fn test_count_with_scope() {
-        let use_case = ListPermissionsUseCase::new().with_scope(PermissionScope::Administrator);
+        let use_case = ListPermissionsUseCase::new().with_scope(AccessScope::Administrator);
         assert_eq!(use_case.count(), 3);
     }
 }
