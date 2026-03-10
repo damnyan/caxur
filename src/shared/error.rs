@@ -89,10 +89,28 @@ impl JsonApiErrorSource {
     }
 }
 
+/// Validation error for a specific field
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+pub struct FieldError {
+    pub field: String,
+    pub message: String,
+}
+
+impl FieldError {
+    pub fn new(field: impl Into<String>, message: impl Into<String>) -> Self {
+        Self {
+            field: field.into(),
+            message: message.into(),
+        }
+    }
+}
+
 #[derive(Error, Debug)]
 pub enum AppError {
-    #[error("Validation error: {0}")]
-    ValidationError(String),
+    #[error("Validation error")]
+    ValidationError(Vec<FieldError>),
+    #[error("Bad request: {0}")]
+    BadRequest(String),
     #[error("Database error: {0}")]
     DatabaseError(#[from] sqlx::Error),
     #[error("Not found: {0}")]
@@ -111,30 +129,71 @@ pub enum AppError {
 
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
-        let (status, title, detail, code) = match &self {
-            AppError::ValidationError(msg) => (
-                StatusCode::UNPROCESSABLE_ENTITY,
-                "Validation Error",
-                msg.clone(),
-                Some("validation_error"),
-            ),
-            AppError::UnprocessableEntity(msg) => (
-                StatusCode::UNPROCESSABLE_ENTITY,
-                "Unprocessable Entity",
-                msg.clone(),
-                Some("unprocessable_entity"),
-            ),
+        match self {
+            AppError::ValidationError(errors) => {
+                let json_errors: Vec<JsonApiError> = errors
+                    .into_iter()
+                    .map(|err| {
+                        JsonApiError::new(
+                            StatusCode::UNPROCESSABLE_ENTITY,
+                            "Validation Error",
+                            err.message,
+                        )
+                        .with_code("validation_error")
+                        .with_source(JsonApiErrorSource::pointer(format!(
+                            "/data/attributes/{}",
+                            err.field
+                        )))
+                    })
+                    .collect();
+
+                (
+                    StatusCode::UNPROCESSABLE_ENTITY,
+                    Json(ErrorResponse {
+                        errors: json_errors,
+                    }),
+                )
+                    .into_response()
+            }
+            AppError::BadRequest(msg) => {
+                let error = JsonApiError::new(StatusCode::BAD_REQUEST, "Bad Request", msg)
+                    .with_code("bad_request");
+
+                (
+                    StatusCode::BAD_REQUEST,
+                    Json(ErrorResponse {
+                        errors: vec![error],
+                    }),
+                )
+                    .into_response()
+            }
+            AppError::UnprocessableEntity(msg) => {
+                let error = JsonApiError::new(
+                    StatusCode::UNPROCESSABLE_ENTITY,
+                    "Unprocessable Entity",
+                    msg,
+                )
+                .with_code("unprocessable_entity");
+
+                (
+                    StatusCode::UNPROCESSABLE_ENTITY,
+                    Json(ErrorResponse {
+                        errors: vec![error],
+                    }),
+                )
+                    .into_response()
+            }
             AppError::DatabaseError(e) => {
                 // Check for unique constraint violations
                 if let Some(db_err) = e.as_database_error()
                     && db_err.is_unique_violation()
                 {
-                    let msg = if db_err.message().contains("username") {
-                        "Username already exists"
+                    let (field, msg) = if db_err.message().contains("username") {
+                        ("username", "Username already exists")
                     } else if db_err.message().contains("email") {
-                        "Email already exists"
+                        ("email", "Email already exists")
                     } else {
-                        "Resource already exists"
+                        ("unknown", "Resource already exists")
                     };
 
                     let error = JsonApiError::new(
@@ -142,7 +201,11 @@ impl IntoResponse for AppError {
                         "Unique Constraint Violation",
                         msg,
                     )
-                    .with_code("unique_violation");
+                    .with_code("unique_violation")
+                    .with_source(JsonApiErrorSource::pointer(format!(
+                        "/data/attributes/{}",
+                        field
+                    )));
 
                     return (
                         StatusCode::UNPROCESSABLE_ENTITY,
@@ -153,58 +216,83 @@ impl IntoResponse for AppError {
                         .into_response();
                 }
                 tracing::error!("Database error: {:?}", e);
-                (
+                let error = JsonApiError::new(
                     StatusCode::INTERNAL_SERVER_ERROR,
                     "Database Error",
-                    "An error occurred while processing your request".to_string(),
-                    Some("database_error"),
+                    "An error occurred while processing your request",
                 )
-            }
-            AppError::NotFound(msg) => (
-                StatusCode::NOT_FOUND,
-                "Not Found",
-                msg.clone(),
-                Some("not_found"),
-            ),
-            AppError::Conflict(msg) => (
-                StatusCode::CONFLICT,
-                "Conflict",
-                msg.clone(),
-                Some("conflict"),
-            ),
-            AppError::Unauthorized(msg) => (
-                StatusCode::UNAUTHORIZED,
-                "Unauthorized",
-                msg.clone(),
-                Some("unauthorized"),
-            ),
-            AppError::Forbidden(msg) => (
-                StatusCode::FORBIDDEN,
-                "Forbidden",
-                msg.clone(),
-                Some("forbidden"),
-            ),
-            AppError::InternalServerError(e) => {
-                tracing::error!("Internal server error: {:?}", e);
+                .with_code("database_error");
+
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
-                    "Internal Server Error",
-                    "An unexpected error occurred".to_string(),
-                    Some("internal_error"),
+                    Json(ErrorResponse {
+                        errors: vec![error],
+                    }),
                 )
+                    .into_response()
             }
-        };
+            AppError::NotFound(msg) => {
+                let error = JsonApiError::new(StatusCode::NOT_FOUND, "Not Found", msg)
+                    .with_code("not_found");
+                (
+                    StatusCode::NOT_FOUND,
+                    Json(ErrorResponse {
+                        errors: vec![error],
+                    }),
+                )
+                    .into_response()
+            }
+            AppError::Conflict(msg) => {
+                let error =
+                    JsonApiError::new(StatusCode::CONFLICT, "Conflict", msg).with_code("conflict");
+                (
+                    StatusCode::CONFLICT,
+                    Json(ErrorResponse {
+                        errors: vec![error],
+                    }),
+                )
+                    .into_response()
+            }
+            AppError::Unauthorized(msg) => {
+                let error = JsonApiError::new(StatusCode::UNAUTHORIZED, "Unauthorized", msg)
+                    .with_code("unauthorized");
+                (
+                    StatusCode::UNAUTHORIZED,
+                    Json(ErrorResponse {
+                        errors: vec![error],
+                    }),
+                )
+                    .into_response()
+            }
+            AppError::Forbidden(msg) => {
+                let error = JsonApiError::new(StatusCode::FORBIDDEN, "Forbidden", msg)
+                    .with_code("forbidden");
+                (
+                    StatusCode::FORBIDDEN,
+                    Json(ErrorResponse {
+                        errors: vec![error],
+                    }),
+                )
+                    .into_response()
+            }
+            AppError::InternalServerError(e) => {
+                tracing::error!("Internal server error: {:?}", e);
+                let error = JsonApiError::new(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Internal Server Error",
+                    "An unexpected error occurred",
+                )
+                .with_code("internal_error");
 
-        let mut error = JsonApiError::new(status, title, detail);
-        if let Some(code) = code {
-            error = error.with_code(code);
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    Json(ErrorResponse {
+                        errors: vec![error],
+                    }),
+                )
+                    .into_response()
+            }
         }
-
-        let body = ErrorResponse {
-            errors: vec![error],
-        };
-
-        (status, Json(body)).into_response()
     }
 }
 
@@ -215,7 +303,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_validation_error_response() {
-        let err = AppError::ValidationError("Invalid input".to_string());
+        let err = AppError::ValidationError(vec![FieldError::new("email", "Invalid email format")]);
         let response = err.into_response();
 
         assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
@@ -225,8 +313,12 @@ mod tests {
 
         assert_eq!(body_json["errors"][0]["status"], "422");
         assert_eq!(body_json["errors"][0]["title"], "Validation Error");
-        assert_eq!(body_json["errors"][0]["detail"], "Invalid input");
+        assert_eq!(body_json["errors"][0]["detail"], "Invalid email format");
         assert_eq!(body_json["errors"][0]["code"], "validation_error");
+        assert_eq!(
+            body_json["errors"][0]["source"]["pointer"],
+            "/data/attributes/email"
+        );
     }
 
     #[tokio::test]

@@ -123,8 +123,8 @@ async fn test_update_user_email_conflict() {
     let result = use_case.execute(user2.id, req).await;
 
     match result {
-        Err(AppError::ValidationError(msg)) => {
-            assert_eq!(msg, "Email already exists");
+        Err(AppError::ValidationError(errors)) => {
+            assert_eq!(errors[0].message, "Email already exists");
         }
         _ => panic!(
             "Expected ValidationError(Email already exists), got {:?}",

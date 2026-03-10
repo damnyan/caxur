@@ -9,13 +9,41 @@ pub struct JsonApiResource<T> {
     pub resource_type: String,
     pub id: String,
     pub attributes: T,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub relationships: Option<std::collections::HashMap<String, JsonApiRelationship>>,
 }
 
-/// JSON:API compliant response for single resource
+#[derive(Serialize, ToSchema, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct JsonApiRelationship {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub data: Option<JsonApiRelationshipData>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub links: Option<JsonApiLinks>,
+}
+
+#[derive(Serialize, ToSchema)]
+#[serde(untagged)]
+pub enum JsonApiRelationshipData {
+    Single(JsonApiIdentifier),
+    Many(Vec<JsonApiIdentifier>),
+}
+
+#[derive(Serialize, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct JsonApiIdentifier {
+    #[serde(rename = "type")]
+    pub resource_type: String,
+    pub id: String,
+}
+
+/// JSON:API compliant response for single resource or collection
 #[derive(Serialize, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct JsonApiResponse<T> {
     pub data: T,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub included: Option<Vec<serde_json::Value>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub meta: Option<JsonApiMeta>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -53,14 +81,53 @@ pub struct JsonApiLinks {
     pub next: Option<String>,
 }
 
+/// Generic collection response for application logic
+pub struct CollectionResponse<T> {
+    pub data: Vec<T>,
+    pub total: i64,
+    pub page: i64,
+    pub per_page: i64,
+}
+
+/// Helper for building JSON:API collection responses
+#[derive(Serialize, ToSchema)]
+pub struct JsonApiCollectionResponse<T>(Vec<JsonApiResource<T>>);
+
+impl<T> JsonApiCollectionResponse<T> {
+    pub fn from_domain<D, F>(
+        collection: CollectionResponse<D>,
+        mapper: F,
+    ) -> JsonApiResponse<Vec<JsonApiResource<T>>>
+    where
+        F: Fn(D) -> JsonApiResource<T>,
+        T: Serialize,
+    {
+        let resources: Vec<JsonApiResource<T>> = collection.data.into_iter().map(mapper).collect();
+
+        let meta = JsonApiMeta::new()
+            .with_total(collection.total)
+            .with_page(collection.page)
+            .with_per_page(collection.per_page);
+
+        JsonApiResponse::new(resources).with_meta(meta)
+    }
+}
+
 impl<T> JsonApiResponse<T> {
     /// Create a new JSON:API response with data
     pub fn new(data: T) -> Self {
         Self {
             data,
+            included: None,
             meta: None,
             links: None,
         }
+    }
+
+    /// Add included resources to the response
+    pub fn with_included(mut self, included: Vec<serde_json::Value>) -> Self {
+        self.included = Some(included);
+        self
     }
 
     /// Add metadata to the response
@@ -83,6 +150,41 @@ impl<T: Serialize> JsonApiResource<T> {
             resource_type: resource_type.into(),
             id: id.into(),
             attributes,
+            relationships: None,
+        }
+    }
+
+    /// Add relationships to the resource
+    pub fn with_relationships(
+        mut self,
+        relationships: std::collections::HashMap<String, JsonApiRelationship>,
+    ) -> Self {
+        self.relationships = Some(relationships);
+        self
+    }
+}
+
+impl JsonApiRelationship {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn with_data(mut self, data: JsonApiRelationshipData) -> Self {
+        self.data = Some(data);
+        self
+    }
+
+    pub fn with_links(mut self, links: JsonApiLinks) -> Self {
+        self.links = Some(links);
+        self
+    }
+}
+
+impl JsonApiIdentifier {
+    pub fn new(resource_type: impl Into<String>, id: impl Into<String>) -> Self {
+        Self {
+            resource_type: resource_type.into(),
+            id: id.into(),
         }
     }
 }

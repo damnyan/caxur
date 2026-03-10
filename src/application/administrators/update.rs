@@ -1,6 +1,6 @@
 use crate::domain::administrators::{Administrator, AdministratorRepository, UpdateAdministrator};
 use crate::domain::password::PasswordHashingService;
-use crate::shared::error::AppError;
+use crate::shared::error::{AppError, FieldError};
 use serde::Deserialize;
 use std::sync::Arc;
 use utoipa::ToSchema;
@@ -35,9 +35,10 @@ impl UpdateAdministratorRequest {
             && let Some(existing_user) = repo.find_by_email(email).await?
             && existing_user.id != current_user_id
         {
-            return Err(AppError::ValidationError(
-                "Email already registered".to_string(),
-            ));
+            return Err(AppError::ValidationError(vec![FieldError::new(
+                "email",
+                "Email already registered",
+            )]));
         }
         Ok(())
     }
@@ -64,17 +65,17 @@ impl UpdateAdministratorUseCase {
         id: Uuid,
         req: UpdateAdministratorRequest,
     ) -> Result<Administrator, AppError> {
-        let existing = self
+        let administrator = self
             .repo
             .find_by_id(id)
             .await
             .map_err(AppError::InternalServerError)?;
 
-        if existing.is_none() {
-            return Err(AppError::NotFound(format!(
-                "Administrator with id {} not found",
-                id
-            )));
+        if administrator.is_none() {
+            return Err(AppError::ValidationError(vec![FieldError::new(
+                "email",
+                "Administrator not found",
+            )]));
         }
 
         // Validate unique email using custom validator (ignoring current user)

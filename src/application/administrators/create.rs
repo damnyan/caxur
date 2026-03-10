@@ -1,6 +1,6 @@
 use crate::domain::administrators::{Administrator, AdministratorRepository, NewAdministrator};
 use crate::domain::password::PasswordHashingService;
-use crate::shared::error::AppError;
+use crate::shared::error::{AppError, FieldError};
 use serde::Deserialize;
 use std::sync::Arc;
 use utoipa::ToSchema;
@@ -29,9 +29,10 @@ impl CreateAdministratorRequest {
         repo: &Arc<dyn AdministratorRepository>,
     ) -> Result<(), AppError> {
         if repo.find_by_email(&self.email).await?.is_some() {
-            return Err(AppError::ValidationError(
-                "Email already exists".to_string(),
-            ));
+            return Err(AppError::ValidationError(vec![FieldError::new(
+                "email",
+                "Email already exists",
+            )]));
         }
         Ok(())
     }

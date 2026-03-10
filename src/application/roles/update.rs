@@ -1,5 +1,5 @@
 use crate::domain::roles::{Role, RoleRepository, UpdateRole};
-use crate::shared::error::AppError;
+use crate::shared::error::{AppError, FieldError};
 use serde::Deserialize;
 use std::sync::Arc;
 use utoipa::ToSchema;
@@ -45,9 +45,10 @@ impl UpdateRoleUseCase {
                 .await?
             && duplicate.id != id
         {
-            return Err(AppError::ValidationError(
-                "Role name already exists".to_string(),
-            ));
+            return Err(AppError::ValidationError(vec![FieldError::new(
+                "name",
+                "Role name already exists",
+            )]));
         }
 
         let update = UpdateRole {

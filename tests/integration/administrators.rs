@@ -675,8 +675,8 @@ async fn test_use_case_create_admin_duplicate_email() {
     assert!(result.is_err());
 
     match result {
-        Err(caxur::shared::error::AppError::ValidationError(msg)) => {
-            assert_eq!(msg, "Email already exists");
+        Err(caxur::shared::error::AppError::ValidationError(errors)) => {
+            assert_eq!(errors[0].message, "Email already exists");
         }
         _ => panic!("Expected ValidationError, got {:?}", result),
     }
@@ -771,8 +771,8 @@ async fn test_use_case_validate_unique_email_direct() {
     };
 
     match req2.validate_unique_email(&repo).await {
-        Err(caxur::shared::error::AppError::ValidationError(msg)) => {
-            assert_eq!(msg, "Email already exists");
+        Err(caxur::shared::error::AppError::ValidationError(errors)) => {
+            assert_eq!(errors[0].message, "Email already exists");
         }
         _ => panic!("Expected ValidationError"),
     }

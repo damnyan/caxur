@@ -1,6 +1,6 @@
 use crate::domain::password::PasswordHashingService;
 use crate::domain::users::{NewUser, User, UserRepository};
-use crate::shared::error::AppError;
+use crate::shared::error::{AppError, FieldError};
 use serde::Deserialize;
 use std::sync::Arc;
 use utoipa::ToSchema;
@@ -26,9 +26,10 @@ impl CreateUserRequest {
         repo: &Arc<dyn UserRepository>,
     ) -> Result<(), AppError> {
         if (repo.find_by_email(&self.email).await?).is_some() {
-            return Err(AppError::ValidationError(
-                "Email already registered".to_string(),
-            ));
+            return Err(AppError::ValidationError(vec![FieldError::new(
+                "email",
+                "Email already registered",
+            )]));
         }
         Ok(())
     }

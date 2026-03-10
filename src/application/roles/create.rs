@@ -1,6 +1,6 @@
 use crate::domain::access_scope::AccessScope;
 use crate::domain::roles::{NewRole, Role, RoleRepository};
-use crate::shared::error::AppError;
+use crate::shared::error::{AppError, FieldError};
 use serde::Deserialize;
 use std::sync::Arc;
 use utoipa::ToSchema;
@@ -41,9 +41,10 @@ impl CreateRoleRequest {
             .await?
             .is_some()
         {
-            return Err(AppError::ValidationError(
-                "Role name already exists".to_string(),
-            ));
+            return Err(AppError::ValidationError(vec![FieldError::new(
+                "name",                     // Changed from "role_id" to "name" to match the validation context
+                "Role name already exists", // Kept the original error message
+            )]));
         }
         Ok(())
     }

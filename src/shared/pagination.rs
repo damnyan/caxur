@@ -11,6 +11,92 @@ pub fn default_page_size() -> i64 {
     20
 }
 
+/// Default sort field for pagination
+pub fn default_sort() -> String {
+    "created_at".to_string()
+}
+
+/// Shared page parameters for pagination
+#[derive(serde::Deserialize, utoipa::IntoParams, utoipa::ToSchema, Debug, Clone)]
+pub struct PageParams {
+    /// Page number (1-indexed)
+    #[serde(
+        default = "default_page_number",
+        deserialize_with = "deserialize_i64_from_string"
+    )]
+    #[param(example = 1, minimum = 1, default = 1)]
+    #[schema(example = 1, minimum = 1, default = 1)]
+    pub number: i64,
+    /// Number of items per page
+    #[serde(
+        default = "default_page_size",
+        deserialize_with = "deserialize_i64_from_string"
+    )]
+    #[param(example = 20, minimum = 1, maximum = 100, default = 20)]
+    #[schema(example = 20, minimum = 1, maximum = 100, default = 20)]
+    pub size: i64,
+}
+
+pub fn deserialize_i64_from_string<'de, D>(deserializer: D) -> Result<i64, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    use serde::Deserialize;
+    let v = serde_json::Value::deserialize(deserializer)?;
+    match v {
+        serde_json::Value::String(s) => s.parse::<i64>().map_err(serde::de::Error::custom),
+        serde_json::Value::Number(n) => n
+            .as_i64()
+            .ok_or_else(|| serde::de::Error::custom("Invalid number")),
+        _ => Err(serde::de::Error::custom("Expected string or number")),
+    }
+}
+
+impl Default for PageParams {
+    fn default() -> Self {
+        Self {
+            number: default_page_number(),
+            size: default_page_size(),
+        }
+    }
+}
+
+/// Shared pagination request with page and sort parameters
+#[derive(serde::Deserialize, utoipa::IntoParams, utoipa::ToSchema, Debug, Clone)]
+#[into_params(parameter_in = Query)]
+pub struct PaginationRequest {
+    /// Pagination parameters
+    #[serde(default)]
+    #[param(style = DeepObject, explode = true)]
+    pub page: PageParams,
+    /// Sort fields (comma-separated, prefix with - for descending)
+    /// Example: "created_at" or "-created_at,username"
+    #[serde(default = "default_sort")]
+    #[param(example = "created_at", default = "created_at", required = false)]
+    pub sort: String,
+    /// Include related resources (comma-separated)
+    /// Example: "roles"
+    #[serde(default)]
+    #[param(required = false)]
+    pub include: Option<String>,
+}
+
+impl PaginationRequest {
+    /// Get the sort field (strips leading -)
+    pub fn sort_field(&self) -> &str {
+        if self.sort.starts_with('-') {
+            &self.sort[1..]
+        } else {
+            &self.sort
+        }
+    }
+
+    /// Check if sorting is descending (starts with -)
+    pub fn is_descending(&self) -> bool {
+        self.sort.starts_with('-')
+    }
+}
+
 /// Pagination link builder that generates JSON:API compliant pagination links
 pub struct PaginationLinkBuilder {
     base_url: String,

@@ -1,4 +1,4 @@
-use crate::shared::error::AppError;
+use crate::shared::error::{AppError, FieldError};
 // use async_trait::async_trait; // Removed
 use axum::{extract::FromRequestParts, http::request::Parts};
 use serde::de::DeserializeOwned;
@@ -17,14 +17,19 @@ where
 
     async fn from_request_parts(parts: &mut Parts, _state: &S) -> Result<Self, Self::Rejection> {
         let query = parts.uri.query().unwrap_or("");
-        match Config::default().deserialize_str::<T>(query) {
+        let decoded_query = query
+            .replace("%5B", "[")
+            .replace("%5b", "[")
+            .replace("%5D", "]")
+            .replace("%5d", "]");
+        match Config::default().deserialize_str::<T>(&decoded_query) {
             Ok(value) => Ok(Qs(value)),
             Err(e) => {
                 tracing::warn!("Failed to parse query string: {}", e);
-                Err(AppError::ValidationError(format!(
-                    "Invalid query parameters: {}",
-                    e
-                )))
+                Err(AppError::ValidationError(vec![FieldError::new(
+                    "query_parameters",
+                    format!("Invalid query parameters: {}", e),
+                )]))
             }
         }
     }
@@ -69,8 +74,8 @@ mod tests {
         match result {
             Ok(_) => panic!("Should have failed"),
             Err(e) => match e {
-                AppError::ValidationError(msg) => {
-                    assert!(msg.contains("Invalid query parameters"));
+                AppError::ValidationError(errors) => {
+                    assert!(errors[0].message.contains("Invalid query parameters"));
                 }
                 _ => panic!("Wrong error type"),
             },

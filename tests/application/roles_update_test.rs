@@ -111,8 +111,8 @@ async fn test_update_role_name_conflict() {
     let result = use_case.execute(role2.id, req).await;
 
     match result {
-        Err(AppError::ValidationError(msg)) => {
-            assert_eq!(msg, "Role name already exists");
+        Err(AppError::ValidationError(errors)) => {
+            assert_eq!(errors[0].message, "Role name already exists");
         }
         _ => panic!(
             "Expected ValidationError(Role name already exists), got {:?}",

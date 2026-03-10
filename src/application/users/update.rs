@@ -1,6 +1,6 @@
 use crate::domain::password::PasswordHashingService;
 use crate::domain::users::{UpdateUser, User, UserRepository};
-use crate::shared::error::AppError;
+use crate::shared::error::{AppError, FieldError};
 use serde::Deserialize;
 use std::sync::Arc;
 use utoipa::ToSchema;
@@ -32,9 +32,10 @@ impl UpdateUserRequest {
         {
             // Only error if the email belongs to a different user
             if existing_user.id != current_user_id {
-                return Err(AppError::ValidationError(
-                    "Email already exists".to_string(),
-                ));
+                return Err(AppError::ValidationError(vec![FieldError::new(
+                    "email",                // Changed from "username" to "email" to match context
+                    "Email already exists", // Changed from "Username already exists" to "Email already exists" to match context
+                )]));
             }
         }
         Ok(())
